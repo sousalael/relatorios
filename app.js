@@ -170,33 +170,34 @@ function showFileTypeSelector(result){
 }
 
 function assignFileToSlot(type, result){
+  // Sempre mostra o mapeamento pro usuário confirmar antes de carregar
   State.files[type]=result;
   var mapping=autoMapHeadersForType(result.headers, type);
-  State.mappings[type]=mapping;
-  State.rawData[type]=applyMapping(result.rows,mapping);
-  updateSlot(type,result.filename,result.rowCount);
-  checkReady();
-  // Se faltar mapeamento de campo essencial, abrir mapeamento de colunas
-  var essentials={estoque:['sku','qtdSistema'],contagem:['sku','qtdContada'],vendas:['sku','qtdVendida'],cadastro:['sku']};
-  var missing=essentials[type].filter(function(f){return !mapping[f];});
-  if(missing.length>0){
-    showColumnMapping(type,result,mapping);
-  }
+  showMappingConfirmation(type, result, mapping);
 }
 
-function showColumnMapping(type, result, currentMapping){
-  $('mappingTitle').textContent='Mapeamento de colunas — '+type.charAt(0).toUpperCase()+type.slice(1);
+function showMappingConfirmation(type, result, currentMapping){
+  var typeLabels={estoque:'Estoque Sistema',contagem:'Contagem Física',vendas:'Vendas 90 dias',cadastro:'Cadastro'};
+  $('mappingTitle').textContent='Confirme o mapeamento — '+typeLabels[type];
   var body=$('mappingBody');
-  body.innerHTML='<div style="margin-bottom:12px;font-size:13px">Arquivo: <strong>'+result.filename+'</strong></div>';
+  body.innerHTML='<div style="margin-bottom:12px;font-size:13px">Arquivo: <strong>'+result.filename+'</strong> ('+result.rowCount.toLocaleString('pt-BR')+' linhas)</div>';
+  body.innerHTML+='<div style="margin-bottom:16px;font-size:12px;color:var(--fc-muted)">Verifique se as colunas foram reconhecidas corretamente. Ajuste os campos que precisar.</div>';
   var allF=Object.keys(SYNONYMS);
+  var fieldLabels={sku:'SKU / Código',descricao:'Descrição',categoria:'Categoria',qtdSistema:'Qtd. Sistema',qtdContada:'Qtd. Contada',custoUnit:'Custo Unitário',local:'Local (Loja/Depósito)',qtdVendida:'Qtd. Vendida',valorVendido:'Valor Vendido (R$)',custoVendido:'Custo Vendido / CMV',lucro:'Lucro / Margem'};
+  // Inverter mapping: header -> field
+  var headerToField={};
+  Object.keys(currentMapping).forEach(function(f){headerToField[currentMapping[f]]=f;});
   result.headers.forEach(function(h){
     var row=document.createElement('div');row.className='mapping-row';
-    var guessed=null;
-    Object.keys(currentMapping).forEach(function(f){if(currentMapping[f]===h)guessed=f;});
-    row.innerHTML='<div class="mapping-field" style="font-weight:400">'+h+'</div><div class="mapping-arrow">→</div>';
+    var mapped=headerToField[h]||'';
+    var matchColor=mapped?'color:var(--fc-green);font-weight:600':'color:var(--fc-muted)';
+    row.innerHTML='<div class="mapping-field" style="'+matchColor+'">'+h+'</div><div class="mapping-arrow">→</div>';
     var s=document.createElement('select');s.className='mapping-select';s.dataset.original=h;
     s.innerHTML='<option value="">(ignorar)</option>';
-    allF.forEach(function(f){s.innerHTML+='<option value="'+f+'"'+(guessed===f?' selected':'')+'>'+f+'</option>';});
+    allF.forEach(function(f){
+      var label=fieldLabels[f]||f;
+      s.innerHTML+='<option value="'+f+'"'+(mapped===f?' selected':'')+'>'+label+'</option>';
+    });
     row.appendChild(s);body.appendChild(row);
   });
   $('btnMappingConfirm').style.display='';
@@ -207,6 +208,7 @@ function showColumnMapping(type, result, currentMapping){
     });
     State.mappings[type]=m;
     State.rawData[type]=applyMapping(result.rows,m);
+    updateSlot(type,result.filename,result.rowCount);
     $('mappingModal').classList.remove('active');
     checkReady();
   };

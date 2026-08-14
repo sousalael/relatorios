@@ -1,7 +1,7 @@
 /* export.js — Excel (SheetJS) + PDF (jsPDF) export */
 var Export = (function(){
   "use strict";
-  var FC = {navy:'0B2545',green:'00B74A',red:'D32F2F',amb:'F57C00',blue:'1565C0',white:'FFFFFF',light:'F5F5F5',border:'D0D0D0'};
+  var FC = {navy:'051323',green:'00B74A',red:'D32F2F',amb:'F57C00',blue:'1565C0',white:'FFFFFF',light:'F5F5F5',border:'D0D0D0'};
   var BRL = function(v){ return (v<0?'−':'')+'R$ '+Math.abs(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
   var BRLi = function(v){ return (v<0?'−':'')+'R$ '+Math.abs(Math.round(v||0)).toLocaleString('pt-BR'); };
   var PCT = function(v){ return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%'; };
@@ -104,7 +104,7 @@ var Export = (function(){
     var W = 210, H = 297, M = 15;
     var y = 0;
     function addHeader(){
-      doc.setFillColor(11,37,69);
+      doc.setFillColor(5,19,35);
       doc.rect(0,0,W,22,'F');
       if(logoDataUrl){try{doc.addImage(logoDataUrl,'PNG',M,3,36,12)}catch(e){}}
       doc.setFontSize(9); doc.setTextColor(255,255,255);
@@ -126,20 +126,20 @@ var Export = (function(){
     }
     function title(txt){
       checkPage(12);
-      doc.setFontSize(14); doc.setTextColor(11,37,69); doc.setFont(undefined,'bold');
+      doc.setFontSize(14); doc.setTextColor(5,19,35); doc.setFont(undefined,'bold');
       doc.text(txt, M, y); y+=6;
       doc.setFontSize(8); doc.setTextColor(150,150,150); doc.setFont(undefined,'normal');
       doc.text('Relatório gerado automaticamente pelo sistema Formula Code', M, y); y+=8;
     }
     function section(txt){
       checkPage(10);
-      doc.setFontSize(11); doc.setTextColor(11,37,69); doc.setFont(undefined,'bold');
+      doc.setFontSize(11); doc.setTextColor(5,19,35); doc.setFont(undefined,'bold');
       doc.text(txt, M, y); y+=6; doc.setFont(undefined,'normal');
     }
     function autoT(head, body, opts){
       checkPage(20);
       doc.autoTable({startY:y,head:[head],body:body,margin:{left:M,right:M},
-        headStyles:{fillColor:[11,37,69],fontSize:7,fontStyle:'bold',halign:'center'},
+        headStyles:{fillColor:[5,19,35],fontSize:7,fontStyle:'bold',halign:'center'},
         bodyStyles:{fontSize:7},
         alternateRowStyles:{fillColor:[245,245,245]},
         styles:{cellPadding:1.5,lineColor:[220,220,220],lineWidth:0.2},
