@@ -166,38 +166,58 @@ var Engine = (function(){
   function calcDiasEstoque(critica, vendas90){
     var vendasMap = {};
     if(vendas90 && vendas90.length){
-      vendas90.forEach(function(r){vendasMap[String(r.sku||'').trim()]={qtdVendida:Number(r.qtdVendida)||0, valorVendido:Number(r.valorVendido)||0};});
+      vendas90.forEach(function(r){
+        var sku=String(r.sku||'').trim();
+        var qtdV=Number(r.qtdVendida)||0;
+        var valV=Number(r.valorVendido)||0;
+        var custoV=Number(r.custoVendido)||0;
+        // Derivar custo unitário do CMV quando disponível
+        var custoUnitDerivado = qtdV>0 ? custoV/qtdV : 0;
+        vendasMap[sku]={qtdVendida:qtdV, valorVendido:valV, custoVendido:custoV, custoUnitDerivado:custoUnitDerivado};
+      });
     }
     var items = critica.items.map(function(it){
       var v = vendasMap[it.sku]||{};
       var vendaMediaDia = safeDiv(v.qtdVendida,90);
       var dias = vendaMediaDia?round2(it.qtdContada/vendaMediaDia):null;
-      var faixa = dias===null?'Sem giro':(dias<=7?'Crítico':(dias<=15?'Baixo':(dias<=60?'Adequado':'Excesso')));
-      return {sku:it.sku, descricao:it.descricao, categoria:it.categoria, qtdEstoque:it.qtdContada, vendaMediaDia:vendaMediaDia, diasEstoque:dias, faixa:faixa, valorEstoque:round2(it.qtdContada*it.custoUnit), custoUnit:it.custoUnit, valorVendido90:v.valorVendido||0};
+      // Custo: usa custoUnit do item, senão deriva do CMV/Qtde das vendas
+      var custo = it.custoUnit || v.custoUnitDerivado || 0;
+      var faixa = dias===null?'Sem giro':(dias<=2?'Ruptura':(dias<=5?'Alto risco':(dias<=15?'Médio risco':(dias<=30?'Cobertura ideal':'Excesso de cobertura'))));
+      return {sku:it.sku, descricao:it.descricao, categoria:it.categoria, qtdEstoque:it.qtdContada, vendaMediaDia:vendaMediaDia, diasEstoque:dias, faixa:faixa, valorEstoque:round2(it.qtdContada*custo), custoUnit:custo, valorVendido90:v.valorVendido||0};
     });
     items = calcABC(items,'valorVendido90');
     items.forEach(function(it){it.abcFat=it.abc_valorVendido90||'C';});
     var semGiro=items.filter(function(i){return i.faixa==='Sem giro'}).length;
-    var criticos=items.filter(function(i){return i.faixa==='Crítico'}).length;
-    var baixos=items.filter(function(i){return i.faixa==='Baixo'}).length;
-    var adequados=items.filter(function(i){return i.faixa==='Adequado'}).length;
-    var excessos=items.filter(function(i){return i.faixa==='Excesso'}).length;
-    var comVenda=items.filter(function(i){return i.diasEstoque!==null});
-    var mediaGeral=comVenda.length?round2(comVenda.reduce(function(s,i){return s+i.diasEstoque},0)/comVenda.length):0;
-    var classA=items.filter(function(i){return i.abcFat==='A'&&i.diasEstoque!==null});
-    var mediaA=classA.length?round2(classA.reduce(function(s,i){return s+i.diasEstoque},0)/classA.length):0;
-    var valExcesso=items.filter(function(i){return i.faixa==='Excesso'}).reduce(function(s,i){return s+i.valorEstoque},0);
-    // Categorias
+    var ruptura=items.filter(function(i){return i.faixa==='Ruptura'}).length;
+    var altoRisco=items.filter(function(i){return i.faixa==='Alto risco'}).length;
+    var medioRisco=items.filter(function(i){return i.faixa==='Médio risco'}).length;
+    var coberturaIdeal=items.filter(function(i){return i.faixa==='Cobertura ideal'}).length;
+    var excessos=items.filter(function(i){return i.faixa==='Excesso de cobertura'}).length;
+    var comVenda=items.filter(function(i){return i.diasEstoque!==null&&i.diasEstoque>0});
+    // Cobertura = soma estoque / soma venda média diária
+    var somaEstoque=comVenda.reduce(function(s,i){return s+i.qtdEstoque},0);
+    var somaVendaDia=comVenda.reduce(function(s,i){return s+(i.vendaMediaDia||0)},0);
+    var coberturaGeral=somaVendaDia?round2(somaEstoque/somaVendaDia):0;
+    function coberturaClasse(cls){
+      var fi=items.filter(function(i){return i.abcFat===cls&&i.diasEstoque!==null&&i.vendaMediaDia>0});
+      var sE=fi.reduce(function(s,i){return s+i.qtdEstoque},0);
+      var sV=fi.reduce(function(s,i){return s+(i.vendaMediaDia||0)},0);
+      return sV?round2(sE/sV):0;
+    }
+    var valExcesso=items.filter(function(i){return i.faixa==='Excesso de cobertura'}).reduce(function(s,i){return s+i.valorEstoque},0);
     var catList = groupByCategoria(items, function(g){
-      var cv = g.items.filter(function(i){return i.diasEstoque!==null});
-      var media = cv.length?round2(cv.reduce(function(s,i){return s+i.diasEstoque},0)/cv.length):0;
-      var sg = g.items.filter(function(i){return i.faixa==='Sem giro'}).length;
-      var cr = g.items.filter(function(i){return i.faixa==='Crítico'}).length;
-      var ex = g.items.filter(function(i){return i.faixa==='Excesso'}).length;
-      var valEx = g.items.filter(function(i){return i.faixa==='Excesso'}).reduce(function(s,i){return s+i.valorEstoque},0);
-      return {nome:g.nome, total:g.items.length, mediaCobertura:media, semGiro:sg, criticos:cr, excessos:ex, valorExcesso:round2(valEx), destaque:cr+sg};
+      var cv=g.items.filter(function(i){return i.diasEstoque!==null&&i.vendaMediaDia>0});
+      var sE=cv.reduce(function(s,i){return s+i.qtdEstoque},0);
+      var sV=cv.reduce(function(s,i){return s+(i.vendaMediaDia||0)},0);
+      var media=sV?round2(sE/sV):0;
+      var sg=g.items.filter(function(i){return i.faixa==='Sem giro'}).length;
+      var cr=g.items.filter(function(i){return i.faixa==='Ruptura'||i.faixa==='Alto risco'}).length;
+      var ex=g.items.filter(function(i){return i.faixa==='Excesso de cobertura'}).length;
+      var valEst=g.items.reduce(function(s,i){return s+i.valorEstoque},0);
+      var valEx=g.items.filter(function(i){return i.faixa==='Excesso de cobertura'}).reduce(function(s,i){return s+i.valorEstoque},0);
+      return {nome:g.nome, total:g.items.length, mediaCobertura:media, semGiro:sg, criticos:cr, excessos:ex, valorEstoque:round2(valEst), valorExcesso:round2(valEx), destaque:cr+sg};
     });
-    return {items:items, mediaGeral:mediaGeral, mediaA:mediaA, semGiro:semGiro, criticos:criticos, baixos:baixos, adequados:adequados, excessos:excessos, valorExcesso:round2(valExcesso), total:items.length, categorias:catList, hasCategorias:hasRealCategorias(catList)};
+    return {items:items, coberturaGeral:coberturaGeral, coberturaA:coberturaClasse('A'), coberturaB:coberturaClasse('B'), coberturaC:coberturaClasse('C'), semGiro:semGiro, ruptura:ruptura, altoRisco:altoRisco, medioRisco:medioRisco, coberturaIdeal:coberturaIdeal, excessos:excessos, valorExcesso:round2(valExcesso), total:items.length, categorias:catList, hasCategorias:hasRealCategorias(catList)};
   }
 
   /* ========== 4. INVESTIMENTO ABC ========== */

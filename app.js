@@ -410,7 +410,7 @@ function renderRuptura(page){
   html+='<span class="pill '+(fA==='all'?'active':'')+'" onclick="App.filterRupturaAbc(\'all\')">Todos</span><span class="pill '+(fA==='A'?'active':'')+'" onclick="App.filterRupturaAbc(\'A\')">Classe A</span><span class="pill '+(fA==='B'?'active':'')+'" onclick="App.filterRupturaAbc(\'B\')">Classe B</span><span class="pill '+(fA==='C'?'active':'')+'" onclick="App.filterRupturaAbc(\'C\')">Classe C</span>';
   if(r.hasCategorias) html+=renderCatFilterPills(r.categorias,fC,'filterRupturaCat');
   html+='<button class="btn-export" onclick="App.openExport()"><i class="ti ti-download"></i> Excel</button><button class="btn-export btn-pdf" onclick="App.exportPDF(\'ruptura\')"><i class="ti ti-file-text"></i> PDF</button></div>';
-  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'ABC fat.',field:'abc_valorVendido90',align:'text-center',render:function(r){return '<span class="badge badge-'+(r.abc_valorVendido90||'c').toLowerCase()+'">'+r.abc_valorVendido90+'</span>';}},{label:'ABC lucro',align:'text-center',render:function(r){return '<span class="badge badge-'+(r.abc_lucro90||'c').toLowerCase()+'">'+r.abc_lucro90+'</span>';}},{label:'Qtd dep.',field:'deposito',align:'text-right'},{label:'Qtd loja',field:'loja',align:'text-right',render:function(r){return '<span class="text-red">'+r.loja+'</span>';}},{label:'Venda méd/dia',align:'text-right',render:function(r){return Engine.round2(r.vendaMediaDia||0)+' un';}},{label:'Fat. méd/dia',align:'text-right',render:function(r){return BRL(r.fatMediaDia||0);}}];
+  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'Qtd depósito',field:'deposito',align:'text-right'},{label:'Qtd loja',field:'loja',align:'text-right',render:function(r){return '<span class="text-red">'+r.loja+'</span>';}}];
   html+=renderTable(p,th,filtered,page||1,100,{rowClass:function(r){return r.abc_valorVendido90==='A'?'row-a':(r.abc_valorVendido90==='B'?'row-b':'');}});
   p.innerHTML=html; renderFns['panel-ruptura']=renderRuptura;
 }
@@ -420,22 +420,36 @@ function renderDias(page){
   var d=State.results.dias, p=$('panel-dias');
   var fF=p.dataset.filterFaixa||'all', fC=p.dataset.filterCat||'all', srch=p.dataset.search||'';
   var filtered=d.items.filter(function(i){if(fF!=='all'&&i.faixa!==fF)return false;if(fC!=='all'&&(i.categoria||'Sem categoria')!==fC)return false;if(srch&&(i.sku+' '+i.descricao).toLowerCase().indexOf(srch.toLowerCase())<0)return false;return true;});
-  var html='<div class="metrics">';
-  html+='<div class="metric"><div class="metric-label">Cobertura média geral</div><div class="metric-value">'+d.mediaGeral+' dias</div></div>';
+  var html='<div class="metrics" style="grid-template-columns:repeat(5,1fr)">';
+  html+='<div class="metric"><div class="metric-label">Cobertura de estoque</div><div class="metric-value">'+d.coberturaGeral+' dias</div></div>';
+  html+='<div class="metric"><div class="metric-label">Cobertura classe A</div><div class="metric-value">'+d.coberturaA+' dias</div></div>';
+  html+='<div class="metric"><div class="metric-label">Cobertura classe B</div><div class="metric-value">'+d.coberturaB+' dias</div></div>';
+  html+='<div class="metric"><div class="metric-label">Cobertura classe C</div><div class="metric-value">'+d.coberturaC+' dias</div></div>';
   html+='<div class="metric"><div class="metric-label">SKUs sem giro</div><div class="metric-value text-red">'+NUM(d.semGiro)+'</div></div>';
-  html+='<div class="metric"><div class="metric-label">Cobertura classe A</div><div class="metric-value">'+d.mediaA+' dias</div></div>';
-  html+='<div class="metric"><div class="metric-label">Overstock (60+ dias)</div><div class="metric-value text-blue">'+NUM(d.excessos)+'</div><div class="metric-detail">'+BRLi(d.valorExcesso)+' investidos</div></div>';
+  html+='</div>';
+  // Distribution cards - 5 faixas
+  html+='<div class="dist-grid" style="grid-template-columns:repeat(5,1fr)">';
+  html+='<div class="dist-card crit"><div class="dist-label">Ruptura (0-2 dias)</div><div class="dist-val">'+NUM(d.ruptura)+'</div><div class="dist-sub">'+PCT(d.total?d.ruptura/d.total*100:0)+'</div></div>';
+  html+='<div class="dist-card" style="background:var(--fc-al);border:1px solid var(--fc-amb)"><div class="dist-label" style="color:var(--fc-amb)">Alto risco (3-5 dias)</div><div class="dist-val" style="color:var(--fc-amb)">'+NUM(d.altoRisco)+'</div><div class="dist-sub">'+PCT(d.total?d.altoRisco/d.total*100:0)+'</div></div>';
+  html+='<div class="dist-card" style="background:#FFF8E1;border:1px solid #FBC02D"><div class="dist-label" style="color:#F57F17">Médio risco (6-15 dias)</div><div class="dist-val" style="color:#F57F17">'+NUM(d.medioRisco)+'</div><div class="dist-sub">'+PCT(d.total?d.medioRisco/d.total*100:0)+'</div></div>';
+  html+='<div class="dist-card ok"><div class="dist-label">Cobertura ideal (16-30 dias)</div><div class="dist-val">'+NUM(d.coberturaIdeal)+'</div><div class="dist-sub">'+PCT(d.total?d.coberturaIdeal/d.total*100:0)+'</div></div>';
+  html+='<div class="dist-card high"><div class="dist-label">Excesso (31+ dias)</div><div class="dist-val">'+NUM(d.excessos)+'</div><div class="dist-sub">'+PCT(d.total?d.excessos/d.total*100:0)+'</div></div>';
   html+='</div>';
   if(d.hasCategorias){
     html+='<div class="section-title"><i class="ti ti-category"></i> Cobertura por categoria</div>';
-    html+=renderCatCards(d.categorias,[{label:'Cobertura média',key:'mediaCobertura',fmt:function(v){return v+' dias';},color:function(){return '';}},{label:'Críticos (0-7d)',key:'criticos',fmt:NUM,color:function(v){return v>0?'text-red':'text-muted';}},{label:'Sem giro',key:'semGiro',fmt:NUM,color:function(v){return v>0?'text-red':'text-muted';}},{label:'Excesso (60+d)',key:'excessos',fmt:NUM,color:function(v){return v>0?'text-blue':'text-muted';}},{label:'Val. excesso',key:'valorExcesso',fmt:BRLi,color:function(){return 'text-blue';}}]);
+    html+=renderCatCards(d.categorias,[
+      {label:'Cobertura média',key:'mediaCobertura',fmt:function(v){return v+' dias';},color:function(){return '';}},
+      {label:'Val. estoque',key:'valorEstoque',fmt:BRLi,color:function(){return '';}},
+      {label:'Ruptura + Alto risco',key:'criticos',fmt:NUM,color:function(v){return v>0?'text-red':'text-muted';}},
+      {label:'Sem giro',key:'semGiro',fmt:NUM,color:function(v){return v>0?'text-red':'text-muted';}},
+      {label:'Excesso (31+d)',key:'excessos',fmt:NUM,color:function(v){return v>0?'text-blue':'text-muted';}}
+    ]);
   }
-  html+='<div class="dist-grid"><div class="dist-card crit"><div class="dist-label">Crítico (0-7 dias)</div><div class="dist-val">'+NUM(d.criticos)+'</div><div class="dist-sub">'+PCT(d.total?d.criticos/d.total*100:0)+'</div></div><div class="dist-card low"><div class="dist-label">Baixo (8-15 dias)</div><div class="dist-val">'+NUM(d.baixos)+'</div><div class="dist-sub">'+PCT(d.total?d.baixos/d.total*100:0)+'</div></div><div class="dist-card ok"><div class="dist-label">Adequado (16-60 dias)</div><div class="dist-val">'+NUM(d.adequados)+'</div><div class="dist-sub">'+PCT(d.total?d.adequados/d.total*100:0)+'</div></div><div class="dist-card high"><div class="dist-label">Excesso (60+ dias)</div><div class="dist-val">'+NUM(d.excessos)+'</div><div class="dist-sub">'+PCT(d.total?d.excessos/d.total*100:0)+'</div></div></div>';
   html+='<div class="toolbar"><input class="search-input" placeholder="Buscar..." value="'+srch+'" onkeyup="App.filterDiasSearch(this.value)">';
-  ['all','Crítico','Baixo','Adequado','Excesso','Sem giro'].forEach(function(f){html+='<span class="pill '+(fF===f?'active':'')+'" onclick="App.filterDiasFaixa(\''+f+'\')">'+(f==='all'?'Todos':f)+'</span>';});
+  ['all','Ruptura','Alto risco','Médio risco','Cobertura ideal','Excesso de cobertura','Sem giro'].forEach(function(f){html+='<span class="pill '+(fF===f?'active':'')+'" onclick="App.filterDiasFaixa(\''+f+'\')">'+(f==='all'?'Todos':f)+'</span>';});
   if(d.hasCategorias) html+=renderCatFilterPills(d.categorias,fC,'filterDiasCat');
   html+='<button class="btn-export" onclick="App.openExport()"><i class="ti ti-download"></i> Excel</button><button class="btn-export btn-pdf" onclick="App.exportPDF(\'dias\')"><i class="ti ti-file-text"></i> PDF</button></div>';
-  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'Qtd estoque',field:'qtdEstoque',align:'text-right'},{label:'Venda méd/dia',align:'text-right',render:function(r){return r.vendaMediaDia!==null?Engine.round2(r.vendaMediaDia):'—';}},{label:'Dias estoque',align:'text-right',render:function(r){return r.diasEstoque!==null?Engine.round2(r.diasEstoque):'—';}},{label:'Cobertura',align:'text-center',render:function(r){var cls={'Crítico':'badge-falta','Baixo':'badge-sobra','Adequado':'badge-ok','Excesso':'badge-b','Sem giro':'badge-c'};return '<span class="badge '+(cls[r.faixa]||'')+'">'+r.faixa+'</span>';}},{label:'Val. estoque',align:'text-right',render:function(r){return BRL(r.valorEstoque);}},{label:'ABC fat.',field:'abcFat',align:'text-center'}];
+  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'Qtd estoque',field:'qtdEstoque',align:'text-right'},{label:'Venda méd/dia',align:'text-right',render:function(r){return r.vendaMediaDia!==null?Engine.round2(r.vendaMediaDia):'—';}},{label:'Dias estoque',align:'text-right',render:function(r){return r.diasEstoque!==null?Engine.round2(r.diasEstoque):'—';}},{label:'Cobertura',align:'text-center',render:function(r){var cls={'Ruptura':'badge-falta','Alto risco':'badge-sobra','Médio risco':'badge-b','Cobertura ideal':'badge-ok','Excesso de cobertura':'badge-b','Sem giro':'badge-c'};return '<span class="badge '+(cls[r.faixa]||'')+'">'+r.faixa+'</span>';}},{label:'Val. estoque',align:'text-right',render:function(r){return BRL(r.valorEstoque);}},{label:'ABC fat.',field:'abcFat',align:'text-center'}];
   html+=renderTable(p,th,filtered,page||1,100);
   p.innerHTML=html; renderFns['panel-dias']=renderDias;
 }
