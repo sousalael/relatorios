@@ -8,7 +8,7 @@ var LOGO='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALAAAAAsCAYAAADFEzJmAAAj
 document.getElementById('logo').src=LOGO;
 
 /* ===== STATE ===== */
-var State = {files:{estoque:null,contagem:null,vendas:null,cadastro:null},mappings:{},rawData:{estoque:[],contagem:[],vendas:[],cadastro:[]},results:{},processDate:'',charts:{},info:{cliente:'',unidade:'',dataInventario:''}};
+var State = {files:{estoque:null,contagem:null,vendas:null,cadastro:null,exclusoes:null},mappings:{},rawData:{estoque:[],contagem:[],vendas:[],cadastro:[],exclusoes:[]},results:{},processDate:'',charts:{},info:{cliente:'',unidade:'',dataInventario:''}};
 
 /* ===== FUZZY MAPPING — com contexto de tipo de arquivo ===== */
 var SYNONYMS = {
@@ -68,28 +68,18 @@ function autoMapHeadersForType(headers,fileType){
 function autoMapHeaders(headers){return autoMapHeadersForType(headers,'');}
 function readFile(file,cb){var r=new FileReader();r.onload=function(e){var d=new Uint8Array(e.target.result);var wb=XLSX.read(d,{type:'array'});var sh=wb.Sheets[wb.SheetNames[0]];var json=XLSX.utils.sheet_to_json(sh,{defval:'',raw:false});cb({headers:json.length?Object.keys(json[0]):[],rows:json,filename:file.name,rowCount:json.length});};r.readAsArrayBuffer(file);}
 /* parseNumBR: converte números no padrão brasileiro (1.234,56 → 1234.56) */
-var NUMERIC_FIELDS = {qtdSistema:1,qtdContada:1,custoUnit:1,qtdVendida:1,valorVendido:1,custoVendido:1,lucro:1};
+var NUMERIC_FIELDS={qtdSistema:1,qtdContada:1,custoUnit:1,qtdVendida:1,valorVendido:1,custoVendido:1,lucro:1};
 function parseNumBR(val){
-  if(val===null||val===undefined||val==='') return 0;
-  if(typeof val==='number') return val;
-  var s = String(val).trim().replace(/\s/g,'').replace(/^R\$\s*/i,'');
-  if(!s) return 0;
-  /* Se contém vírgula → formato BR: remove pontos (milhar), troca vírgula por ponto */
-  if(s.indexOf(',')>=0){
-    s = s.replace(/\./g,'').replace(',','.');
-  } else if(s.indexOf('.')>=0){
-    /* Só ponto: se exatamente 3 dígitos após último ponto e dígitos antes → milhar */
-    var parts = s.split('.');
-    var last = parts[parts.length-1];
-    if(parts.length>=2 && last.length===3 && /^\d+$/.test(last)){
-      s = s.replace(/\./g,'');
-    }
-    /* senão mantém ponto como decimal */
-  }
-  var n = Number(s);
-  return isNaN(n) ? 0 : n;
+  if(val===null||val===undefined||val==='')return 0;
+  if(typeof val==='number')return val;
+  var s=String(val).trim().replace(/\s/g,'').replace(/^R\$\s*/i,'');
+  if(!s)return 0;
+  if(s.indexOf(',')>=0){s=s.replace(/\./g,'').replace(',','.');}
+  else if(s.indexOf('.')>=0){var parts=s.split('.');var last=parts[parts.length-1];if(parts.length>=2&&last.length===3&&/^\d+$/.test(last)){s=s.replace(/\./g,'');}}
+  var n=Number(s);return isNaN(n)?0:n;
 }
-function applyMapping(rows,mapping){return rows.map(function(row){var o={};Object.keys(mapping).forEach(function(f){var v=row[mapping[f]];o[f]=NUMERIC_FIELDS[f]?parseNumBR(v):v;});return o;});}
+function normalizeSKU(val){var s=String(val||'').trim();if(/^[\d.,\s]+$/.test(s))s=s.replace(/[.,\s]/g,'');return s;}
+function applyMapping(rows,mapping){return rows.map(function(row){var o={};Object.keys(mapping).forEach(function(f){var v=row[mapping[f]];if(f==='sku'){o[f]=normalizeSKU(v);}else if(NUMERIC_FIELDS[f]){o[f]=parseNumBR(v);}else{o[f]=v;}});return o;});}
 
 /* ===== UI HELPERS ===== */
 var BRL=function(v){return(v<0?'−':'')+'R$ '+Math.abs(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});};
@@ -110,7 +100,7 @@ document.querySelectorAll('.tab').forEach(function(tab){
 });
 
 /* ===== UPLOAD — cada slot é clicável ===== */
-var SLOT_TYPES = ['estoque','contagem','vendas','cadastro'];
+var SLOT_TYPES = ['estoque','contagem','vendas','cadastro','exclusoes'];
 var slotFileInputs = {};
 
 // Drop zone geral — abre seletor de tipo depois de ler o arquivo
@@ -164,7 +154,8 @@ function showFileTypeSelector(result){
     {value:'estoque',label:'Estoque Sistema',desc:'Saldo do ERP antes da contagem'},
     {value:'contagem',label:'Contagem Física',desc:'Resultado da contagem no local'},
     {value:'vendas',label:'Vendas 90 dias',desc:'Histórico de vendas do período'},
-    {value:'cadastro',label:'Cadastro de Produtos',desc:'Descrição e categoria dos SKUs'}
+    {value:'cadastro',label:'Cadastro de Produtos',desc:'Descrição e categoria dos SKUs'},
+    {value:'exclusoes',label:'Lista de Exclusões',desc:'SKUs a excluir de todas as análises'}
   ];
   var btnsHtml='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
   types.forEach(function(t){
@@ -268,6 +259,17 @@ function processAll(){
   var hasEstoque=State.rawData.estoque.length>0;
   var hasContagem=State.rawData.contagem.length>0;
   var hasVendas=State.rawData.vendas.length>0;
+  /* Expurgar SKUs da lista de exclusão */
+  var excludeSet={};
+  if(State.rawData.exclusoes&&State.rawData.exclusoes.length){
+    State.rawData.exclusoes.forEach(function(r){var s=String(r.sku||'').trim();if(s)excludeSet[s]=true;});
+    ['estoque','contagem','vendas','cadastro'].forEach(function(tipo){
+      State.rawData[tipo]=State.rawData[tipo].filter(function(r){return!excludeSet[String(r.sku||'').trim()];});
+    });
+    hasEstoque=State.rawData.estoque.length>0;
+    hasContagem=State.rawData.contagem.length>0;
+    hasVendas=State.rawData.vendas.length>0;
+  }
   State.results={};
   var avail={critica:false,ruptura:false,dias:false,abc:false,perda:false};
   // Mapa global de custo derivado do CMV das vendas
@@ -409,7 +411,7 @@ function renderCritica(page){
   html+='<span class="pill '+(fS==='all'?'active':'')+'" onclick="App.filterCriticaStatus(\'all\')">Todos</span><span class="pill '+(fS==='falta'?'active':'')+'" onclick="App.filterCriticaStatus(\'falta\')">Faltas</span><span class="pill '+(fS==='sobra'?'active':'')+'" onclick="App.filterCriticaStatus(\'sobra\')">Sobras</span><span class="pill '+(fS==='ok'?'active':'')+'" onclick="App.filterCriticaStatus(\'ok\')">Sem diverg.</span>';
   if(c.hasCategorias) html+=renderCatFilterPills(c.categorias,fC,'filterCriticaCat');
   html+='<button class="btn-export" onclick="App.openExport()"><i class="ti ti-download"></i> Excel</button><button class="btn-export btn-pdf" onclick="App.exportPDF(\'critica\')"><i class="ti ti-file-text"></i> PDF</button></div>';
-  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'Qtd sist.',field:'qtdSistema',align:'text-right'},{label:'Qtd cont.',field:'qtdContada',align:'text-right'},{label:'Dif. qtd',field:'difQtd',align:'text-right',render:function(r){return '<span class="'+(r.difQtd<0?'text-red':(r.difQtd>0?'text-green':'text-muted'))+'">'+r.difQtd+'</span>';}},{label:'Custo unit.',field:'custoUnit',align:'text-right',render:function(r){return BRL(r.custoUnit);}},{label:'Dif. R$',field:'difValor',align:'text-right',render:function(r){return '<span class="'+(r.difValor<0?'text-red':(r.difValor>0?'text-green':'text-muted'))+'">'+BRL(r.difValor)+'</span>';}},{label:'Status',field:'status',align:'text-center',render:function(r){var cls=r.status==='Falta'?'badge-falta':(r.status==='Sobra'?'badge-sobra':'badge-ok');return '<span class="badge '+cls+'">'+r.status+'</span>';}}];
+  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'Qtd sist.',field:'qtdSistema',align:'text-right'},{label:'Qtd cont.',field:'qtdContada',align:'text-right'},{label:'Dif. qtd',field:'difQtd',align:'text-right',render:function(r){return '<span class="'+(r.difQtd<0?'text-red':(r.difQtd>0?'text-green':'text-muted'))+'">'+r.difQtd+'</span>';}},{label:'Dif. R$',field:'difValor',align:'text-right',render:function(r){return '<span class="'+(r.difValor<0?'text-red':(r.difValor>0?'text-green':'text-muted'))+'">'+BRL(r.difValor)+'</span>';}},{label:'Status',field:'status',align:'text-center',render:function(r){var cls=r.status==='Falta'?'badge-falta':(r.status==='Sobra'?'badge-sobra':'badge-ok');return '<span class="badge '+cls+'">'+r.status+'</span>';}}];
   html+=renderTable(p,th,filtered,page||1,100);
   p.innerHTML=html; renderFns['panel-critica']=renderCritica;
   if(c.hasCategorias){destroyChart('chartCritica');var ctx=document.getElementById('chartCritica');if(ctx){State.charts.chartCritica=new Chart(ctx,{type:'bar',data:{labels:c.categorias.map(function(c){return c.nome;}),datasets:[{label:'Faltas',data:c.categorias.map(function(c){return Math.abs(c.faltaVal);}),backgroundColor:'#D32F2F',borderRadius:4,barPercentage:.65},{label:'Sobras',data:c.categorias.map(function(c){return c.sobraVal;}),backgroundColor:'#F57C00',borderRadius:4,barPercentage:.65}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:function(c){return c.dataset.backgroundColor;},font:{size:10,weight:'bold'},formatter:function(v){return 'R$ '+v.toLocaleString('pt-BR');}}},scales:{x:{grid:{color:'#f0f0f0'},ticks:{font:{size:10},callback:function(v){return 'R$ '+(v/1000).toFixed(0)+'k';}}},y:{grid:{display:false},ticks:{font:{size:10}}}},layout:{padding:{right:80}}}});}}
