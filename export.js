@@ -79,9 +79,9 @@ var Export = (function(){
       addSheet(wb, 'Investimento ABC', ha, ra, [14,24,16,10,10,12,12,14,14,14], makeInfoRows('INVESTIMENTO ABC',info,processDate));
     }
     if(selected.perda && data.perda){
-      var hp = ['SKU','Descrição','Categoria','ABC Fat.','ABC Lucro','Qtd Depósito','Venda Méd/Dia','Fat. Méd/Dia','Lucro Méd/Dia','Perda Fat./Dia','Perda Lucro/Dia'];
+      var hp = ['SKU','Descrição','Categoria','ABC Fat.','ABC Lucro','Qtd Depósito','Venda Méd/Dia','Perda Fat./Dia','Perda Lucro/Dia','Perda Fat./Mês','Perda Lucro/Mês'];
       var rp = data.perda.items.map(function(i){
-        return [i.sku,i.descricao,i.categoria,i.abcFat,i.abcLucro,i.qtdDeposito,i.vendaMediaDia,BRL(i.fatMediaDia),BRL(i.lucroMediaDia),BRL(i.perdaFatDia),BRL(i.perdaLucroDia)];
+        return [i.sku,i.descricao,i.categoria,i.abcFat,i.abcLucro,i.qtdDeposito,i.vendaMediaDia,BRL(i.perdaFatDia),BRL(i.perdaLucroDia),BRL(i.perdaFatMes),BRL(i.perdaLucroMes)];
       });
       addSheet(wb, 'Projeção de Perda', hp, rp, [14,24,16,10,10,12,14,14,14,14,14], makeInfoRows('PROJEÇÃO DE PERDA',info,processDate));
     }
@@ -260,12 +260,26 @@ var Export = (function(){
          ['C',p.classC.count,BRLi(p.classC.perda),BRLi(p.classC.lucro),PCT(p.classC.pct),BRLi(p.classC.perda*30)]],
         {1:{halign:'right'},2:{halign:'right'},3:{halign:'right'},4:{halign:'right'},5:{halign:'right'}}
       );
-      section('Top 30 itens com maior perda projetada');
-      var topP = p.items.slice().sort(function(a,b){return b.perdaFatDia-a.perdaFatDia}).slice(0,30);
-      autoT(['SKU','Descrição','ABC Fat.','Perda Fat./Dia','Perda Lucro/Dia'],
-        topP.map(function(i){return [i.sku,i.descricao,i.abcFat,BRL(i.perdaFatDia),BRL(i.perdaLucroDia)];}),
-        {0:{halign:'left'},1:{halign:'left'},3:{halign:'right'},4:{halign:'right'}}
-      );
+      var perdaHead=['SKU','Descrição','Categoria','Perda Fat./Mês','Perda Lucro/Mês'];
+      var perdaCols={0:{halign:'left'},1:{halign:'left'},2:{halign:'left'},3:{halign:'right'},4:{halign:'right'}};
+      // Classe A
+      var itemsA=p.items.filter(function(i){return i.abcFat==='A'}).sort(function(a,b){return b.perdaFatMes-a.perdaFatMes});
+      if(itemsA.length){
+        section('Classe A — '+itemsA.length+' itens (maior perda mensal primeiro)');
+        autoT(perdaHead,itemsA.map(function(i){return [i.sku,i.descricao,i.categoria,BRL(i.perdaFatMes),BRL(i.perdaLucroMes)];}),perdaCols);
+      }
+      // Classe B
+      var itemsB=p.items.filter(function(i){return i.abcFat==='B'}).sort(function(a,b){return b.perdaFatMes-a.perdaFatMes});
+      if(itemsB.length){
+        section('Classe B — '+itemsB.length+' itens (maior perda mensal primeiro)');
+        autoT(perdaHead,itemsB.map(function(i){return [i.sku,i.descricao,i.categoria,BRL(i.perdaFatMes),BRL(i.perdaLucroMes)];}),perdaCols);
+      }
+      // Classe C
+      var itemsC=p.items.filter(function(i){return i.abcFat==='C'}).sort(function(a,b){return b.perdaFatMes-a.perdaFatMes});
+      if(itemsC.length){
+        section('Classe C — '+itemsC.length+' itens (maior perda mensal primeiro)');
+        autoT(perdaHead,itemsC.map(function(i){return [i.sku,i.descricao,i.categoria,BRL(i.perdaFatMes),BRL(i.perdaLucroMes)];}),perdaCols);
+      }
     }
     // Note
     checkPage(12);

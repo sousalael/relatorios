@@ -248,11 +248,13 @@ function processAll(){
   var hasVendas=State.rawData.vendas.length>0;
   State.results={};
   var avail={critica:false,ruptura:false,dias:false,abc:false,perda:false};
+  // Mapa global de custo derivado do CMV das vendas
+  var custoMap = hasVendas ? Engine.buildCustoMap(State.rawData.vendas) : {};
 
   setTimeout(function(){
     fill.style.width='20%';
     if(hasEstoque&&hasContagem){
-      State.results.critica=Engine.calcCritica(State.rawData.estoque,State.rawData.contagem,State.rawData.cadastro);
+      State.results.critica=Engine.calcCritica(State.rawData.estoque,State.rawData.contagem,State.rawData.cadastro,custoMap);
       avail.critica=true;
     }
     fill.style.width='35%';
@@ -260,6 +262,8 @@ function processAll(){
     if(State.results.critica){itemsBase=State.results.critica;}
     else if(hasContagem){
       var built=Engine.buildItemsFromContagem(State.rawData.contagem,State.rawData.cadastro);
+      // Aplicar custo do mapa global
+      built.forEach(function(it){ if(!it.custoUnit) it.custoUnit = custoMap[it.sku]||0; });
       itemsBase={items:built,totalSKUs:built.length};
     }
     setTimeout(function(){
@@ -271,13 +275,13 @@ function processAll(){
       fill.style.width='65%';
       setTimeout(function(){
         if(itemsBase&&hasVendas){
-          State.results.dias=Engine.calcDiasEstoque(itemsBase,State.rawData.vendas);
+          State.results.dias=Engine.calcDiasEstoque(itemsBase,State.rawData.vendas,custoMap);
           avail.dias=true;
         }
         fill.style.width='75%';
         setTimeout(function(){
           if(itemsBase&&hasVendas){
-            State.results.abc=Engine.calcInvestimentoABC(itemsBase,State.rawData.vendas);
+            State.results.abc=Engine.calcInvestimentoABC(itemsBase,State.rawData.vendas,custoMap);
             avail.abc=true;
           }
           if(State.results.ruptura&&hasVendas){
@@ -481,8 +485,8 @@ function renderABC(page){
 /* ===== 5. PROJECAO PERDA ===== */
 function renderPerda(page){
   var pe=State.results.perda, p=$('panel-perda');
-  var fC=p.dataset.filterCat||'all', srch=p.dataset.search||'';
-  var filtered=pe.items.filter(function(i){if(fC!=='all'&&(i.categoria||'Sem categoria')!==fC)return false;if(srch&&(i.sku+' '+i.descricao).toLowerCase().indexOf(srch.toLowerCase())<0)return false;return true;});
+  var fA=p.dataset.filterAbc||'all', fC=p.dataset.filterCat||'all', srch=p.dataset.search||'';
+  var filtered=pe.items.filter(function(i){if(fA!=='all'&&i.abcFat!==fA)return false;if(fC!=='all'&&(i.categoria||'Sem categoria')!==fC)return false;if(srch&&(i.sku+' '+i.descricao).toLowerCase().indexOf(srch.toLowerCase())<0)return false;return true;});
   var html='<div class="metrics"><div class="metric"><div class="metric-label">Venda perdida / dia</div><div class="metric-value text-red">'+BRLi(pe.totalPerdaFat)+'</div></div><div class="metric"><div class="metric-label">Lucro perdido / dia</div><div class="metric-value text-red">'+BRLi(pe.totalPerdaLucro)+'</div></div><div class="metric"><div class="metric-label">Perda mensal (fat.)</div><div class="metric-value text-red">'+BRLi(pe.perdaMensal)+'</div></div><div class="metric"><div class="metric-label">SKUs em ruptura</div><div class="metric-value">'+NUM(pe.totalSKUs)+'</div></div></div>';
   html+='<div class="loss-cards"><div class="loss-card a"><div class="loss-title">Classe A — perda/dia</div><div class="loss-main">'+BRLi(pe.classA.perda)+'</div><div class="loss-sub">'+PCT(pe.classA.pct)+' — '+NUM(pe.classA.count)+' SKUs</div></div><div class="loss-card b"><div class="loss-title">Classe B — perda/dia</div><div class="loss-main">'+BRLi(pe.classB.perda)+'</div><div class="loss-sub">'+PCT(pe.classB.pct)+' — '+NUM(pe.classB.count)+' SKUs</div></div><div class="loss-card c"><div class="loss-title">Classe C — perda/dia</div><div class="loss-main">'+BRLi(pe.classC.perda)+'</div><div class="loss-sub">'+PCT(pe.classC.pct)+' — '+NUM(pe.classC.count)+' SKUs</div></div></div>';
   html+='<div class="alert alert-danger"><i class="ti ti-alert-triangle"></i><div><strong>Impacto classe A:</strong> Diário: '+BRLi(pe.classA.perda)+' | Semanal: '+BRLi(pe.classA.perda*7)+' | Mensal: '+BRLi(pe.classA.perda*30)+' | Lucro mensal perdido: '+BRLi(pe.classA.lucro*30)+'</div></div>';
@@ -491,9 +495,10 @@ function renderPerda(page){
     html+=renderCatCards(pe.categorias,[{label:'Rupturas',key:'totalRupturas',fmt:NUM,color:function(){return '';}},{label:'Perda fat./dia',key:'perdaFatDia',fmt:BRLi,color:function(){return 'text-red';}},{label:'Perda lucro/dia',key:'perdaLucroDia',fmt:BRLi,color:function(){return 'text-red';}},{label:'Perda mensal',key:'perdaMensal',fmt:BRLi,color:function(){return 'text-red';}},{label:'Rupturas A',key:'rupturaA',fmt:NUM,color:function(v){return v>0?'text-red':'text-muted';}}]);
   }
   html+='<div class="toolbar"><input class="search-input" placeholder="Buscar..." value="'+srch+'" onkeyup="App.filterPerdaSearch(this.value)">';
+  html+='<span class="pill '+(fA==='all'?'active':'')+'" onclick="App.filterPerdaAbc(\'all\')">Todos</span><span class="pill '+(fA==='A'?'active':'')+'" onclick="App.filterPerdaAbc(\'A\')">Classe A</span><span class="pill '+(fA==='B'?'active':'')+'" onclick="App.filterPerdaAbc(\'B\')">Classe B</span><span class="pill '+(fA==='C'?'active':'')+'" onclick="App.filterPerdaAbc(\'C\')">Classe C</span>';
   if(pe.hasCategorias) html+=renderCatFilterPills(pe.categorias,fC,'filterPerdaCat');
   html+='<button class="btn-export" onclick="App.openExport()"><i class="ti ti-download"></i> Excel</button><button class="btn-export btn-pdf" onclick="App.exportPDF(\'perda\')"><i class="ti ti-file-text"></i> PDF</button></div>';
-  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'ABC fat.',align:'text-center',render:function(r){return '<span class="badge badge-'+r.abcFat.toLowerCase()+'">'+r.abcFat+'</span>';}},{label:'ABC lucro',align:'text-center',render:function(r){return '<span class="badge badge-'+r.abcLucro.toLowerCase()+'">'+r.abcLucro+'</span>';}},{label:'Venda méd/dia',field:'vendaMediaDia',align:'text-right'},{label:'Fat. méd/dia',align:'text-right',render:function(r){return BRL(r.fatMediaDia);}},{label:'Perda fat./dia',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaFatDia)+'</span>';}},{label:'Perda lucro/dia',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaLucroDia)+'</span>';}}];
+  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'ABC fat.',align:'text-center',render:function(r){return '<span class="badge badge-'+r.abcFat.toLowerCase()+'">'+r.abcFat+'</span>';}},{label:'Perda fat./dia',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaFatDia)+'</span>';}},{label:'Perda lucro/dia',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaLucroDia)+'</span>';}},{label:'Perda fat./mês',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaFatMes)+'</span>';}},{label:'Perda lucro/mês',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaLucroMes)+'</span>';}}];
   html+=renderTable(p,th,filtered,page||1,100,{rowClass:function(r){return r.abcFat==='A'?'row-a':(r.abcFat==='B'?'row-b':'');}});
   html+='<div class="note"><i class="ti ti-info-circle"></i><span>Premissa: a venda média dos últimos 90 dias representa a demanda normal. Valores projetados são estimativas.</span></div>';
   p.innerHTML=html; renderFns['panel-perda']=renderPerda;
@@ -513,6 +518,7 @@ window.App = {
   filterAbcSearch:function(v){$('panel-abc').dataset.search=v;renderABC(1);},
   filterAbcCat:function(v){$('panel-abc').dataset.filterCat=v;renderABC(1);},
   filterPerdaSearch:function(v){$('panel-perda').dataset.search=v;renderPerda(1);},
+  filterPerdaAbc:function(v){$('panel-perda').dataset.filterAbc=v;renderPerda(1);},
   filterPerdaCat:function(v){$('panel-perda').dataset.filterCat=v;renderPerda(1);},
   openExport:function(){
     var r=State.results;
