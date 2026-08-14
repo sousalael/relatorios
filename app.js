@@ -66,16 +66,15 @@ function autoMapHeadersForType(headers,fileType){
   return m;
 }
 function autoMapHeaders(headers){return autoMapHeadersForType(headers,'');}
-function readFile(file,cb){var r=new FileReader();r.onload=function(e){var d=new Uint8Array(e.target.result);var wb=XLSX.read(d,{type:'array'});var sh=wb.Sheets[wb.SheetNames[0]];var json=XLSX.utils.sheet_to_json(sh,{defval:'',raw:false});cb({headers:json.length?Object.keys(json[0]):[],rows:json,filename:file.name,rowCount:json.length});};r.readAsArrayBuffer(file);}
-/* parseNumBR: converte números no padrão brasileiro (1.234,56 → 1234.56) */
+function readFile(file,cb){var r=new FileReader();r.onload=function(e){var d=new Uint8Array(e.target.result);var wb=XLSX.read(d,{type:'array'});var sh=wb.Sheets[wb.SheetNames[0]];var json=XLSX.utils.sheet_to_json(sh,{defval:''});cb({headers:json.length?Object.keys(json[0]):[],rows:json,filename:file.name,rowCount:json.length});};r.readAsArrayBuffer(file);}
+/* parseNumBR: número JS passa direto; string BR converte (ponto=milhar, vírgula=decimal) */
 var NUMERIC_FIELDS={qtdSistema:1,qtdContada:1,custoUnit:1,qtdVendida:1,valorVendido:1,custoVendido:1,lucro:1};
 function parseNumBR(val){
   if(val===null||val===undefined||val==='')return 0;
   if(typeof val==='number')return val;
   var s=String(val).trim().replace(/\s/g,'').replace(/^R\$\s*/i,'');
   if(!s)return 0;
-  if(s.indexOf(',')>=0){s=s.replace(/\./g,'').replace(',','.');}
-  else if(s.indexOf('.')>=0){var parts=s.split('.');var last=parts[parts.length-1];if(parts.length>=2&&last.length===3&&/^\d+$/.test(last)){s=s.replace(/\./g,'');}}
+  s=s.replace(/\./g,'').replace(',','.');
   var n=Number(s);return isNaN(n)?0:n;
 }
 function normalizeSKU(val){var s=String(val||'').trim();if(/^[\d.,\s]+$/.test(s))s=s.replace(/[.,\s]/g,'');return s;}
