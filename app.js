@@ -67,7 +67,29 @@ function autoMapHeadersForType(headers,fileType){
 }
 function autoMapHeaders(headers){return autoMapHeadersForType(headers,'');}
 function readFile(file,cb){var r=new FileReader();r.onload=function(e){var d=new Uint8Array(e.target.result);var wb=XLSX.read(d,{type:'array'});var sh=wb.Sheets[wb.SheetNames[0]];var json=XLSX.utils.sheet_to_json(sh,{defval:''});cb({headers:json.length?Object.keys(json[0]):[],rows:json,filename:file.name,rowCount:json.length});};r.readAsArrayBuffer(file);}
-function applyMapping(rows,mapping){return rows.map(function(row){var o={};Object.keys(mapping).forEach(function(f){o[f]=row[mapping[f]];});return o;});}
+/* parseNumBR: converte números no padrão brasileiro (1.234,56 → 1234.56) */
+var NUMERIC_FIELDS = {qtdSistema:1,qtdContada:1,custoUnit:1,qtdVendida:1,valorVendido:1,custoVendido:1,lucro:1};
+function parseNumBR(val){
+  if(val===null||val===undefined||val==='') return 0;
+  if(typeof val==='number') return val;
+  var s = String(val).trim().replace(/\s/g,'').replace(/^R\$\s*/i,'');
+  if(!s) return 0;
+  /* Se contém vírgula → formato BR: remove pontos (milhar), troca vírgula por ponto */
+  if(s.indexOf(',')>=0){
+    s = s.replace(/\./g,'').replace(',','.');
+  } else if(s.indexOf('.')>=0){
+    /* Só ponto: se exatamente 3 dígitos após último ponto e dígitos antes → milhar */
+    var parts = s.split('.');
+    var last = parts[parts.length-1];
+    if(parts.length>=2 && last.length===3 && /^\d+$/.test(last)){
+      s = s.replace(/\./g,'');
+    }
+    /* senão mantém ponto como decimal */
+  }
+  var n = Number(s);
+  return isNaN(n) ? 0 : n;
+}
+function applyMapping(rows,mapping){return rows.map(function(row){var o={};Object.keys(mapping).forEach(function(f){var v=row[mapping[f]];o[f]=NUMERIC_FIELDS[f]?parseNumBR(v):v;});return o;});}
 
 /* ===== UI HELPERS ===== */
 var BRL=function(v){return(v<0?'−':'')+'R$ '+Math.abs(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});};
@@ -269,7 +291,7 @@ function processAll(){
     setTimeout(function(){
       fill.style.width='50%';
       if(hasContagem){
-        State.results.ruptura=Engine.calcRuptura(State.rawData.contagem,hasVendas?State.rawData.vendas:[]);
+        State.results.ruptura=Engine.calcRuptura(State.rawData.contagem,hasVendas?State.rawData.vendas:[],State.rawData.cadastro);
         avail.ruptura=true;
       }
       fill.style.width='65%';
@@ -414,7 +436,7 @@ function renderRuptura(page){
   html+='<span class="pill '+(fA==='all'?'active':'')+'" onclick="App.filterRupturaAbc(\'all\')">Todos</span><span class="pill '+(fA==='A'?'active':'')+'" onclick="App.filterRupturaAbc(\'A\')">Classe A</span><span class="pill '+(fA==='B'?'active':'')+'" onclick="App.filterRupturaAbc(\'B\')">Classe B</span><span class="pill '+(fA==='C'?'active':'')+'" onclick="App.filterRupturaAbc(\'C\')">Classe C</span>';
   if(r.hasCategorias) html+=renderCatFilterPills(r.categorias,fC,'filterRupturaCat');
   html+='<button class="btn-export" onclick="App.openExport()"><i class="ti ti-download"></i> Excel</button><button class="btn-export btn-pdf" onclick="App.exportPDF(\'ruptura\')"><i class="ti ti-file-text"></i> PDF</button></div>';
-  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'Qtd depósito',field:'deposito',align:'text-right'},{label:'Qtd loja',field:'loja',align:'text-right',render:function(r){return '<span class="text-red">'+r.loja+'</span>';}}];
+  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'ABC fat.',align:'text-center',render:function(r){var c=r.abc_valorVendido90||'C';return '<span class="badge badge-'+c.toLowerCase()+'">'+c+'</span>';}},{label:'Qtd depósito',field:'deposito',align:'text-right'},{label:'Qtd loja',field:'loja',align:'text-right',render:function(r){return '<span class="text-red">'+r.loja+'</span>';}},{label:'Venda méd/dia',align:'text-right',render:function(r){return r.vendaMediaDia?Engine.round2(r.vendaMediaDia):'—';}},{label:'Fat. méd/dia',align:'text-right',render:function(r){return r.fatMediaDia?BRL(r.fatMediaDia):'—';}}];
   html+=renderTable(p,th,filtered,page||1,100,{rowClass:function(r){return r.abc_valorVendido90==='A'?'row-a':(r.abc_valorVendido90==='B'?'row-b':'');}});
   p.innerHTML=html; renderFns['panel-ruptura']=renderRuptura;
 }

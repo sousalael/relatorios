@@ -118,12 +118,30 @@ var Engine = (function(){
   }
 
   /* ========== 2. RUPTURA ========== */
-  function calcRuptura(contagem, vendas90){
+  function calcRuptura(contagem, vendas90, cadastro){
+    /* Mapa de categorias: cadastro > vendas (enriquece quando contagem não traz) */
+    var catMap = {};
+    var descMap = {};
+    if(cadastro && cadastro.length){
+      cadastro.forEach(function(r){
+        var sku = String(r.sku||'').trim();
+        if(sku && r.categoria) catMap[sku] = r.categoria;
+        if(sku && r.descricao) descMap[sku] = r.descricao;
+      });
+    }
+    if(vendas90 && vendas90.length){
+      vendas90.forEach(function(r){
+        var sku = String(r.sku||'').trim();
+        if(sku && r.categoria && !catMap[sku]) catMap[sku] = r.categoria;
+      });
+    }
     var skuLocais = {};
     contagem.forEach(function(row){
       var sku = String(row.sku||'').trim();
       if(!sku) return;
-      if(!skuLocais[sku]) skuLocais[sku] = {sku:sku, descricao:row.descricao||'', categoria:row.categoria||'', deposito:0, loja:0, custoUnit:Number(row.custoUnit)||0};
+      var cat = row.categoria || catMap[sku] || '';
+      var desc = row.descricao || descMap[sku] || '';
+      if(!skuLocais[sku]) skuLocais[sku] = {sku:sku, descricao:desc, categoria:cat, deposito:0, loja:0, custoUnit:Number(row.custoUnit)||0};
       var local = String(row.local||'').toLowerCase().trim();
       var qty = Number(row.qtdContada)||0;
       if(isDeposito(local)) skuLocais[sku].deposito += qty;
@@ -148,8 +166,8 @@ var Engine = (function(){
         it.lucroMediaDia = safeDiv(v.lucro||(v.valorVendido-v.custoVendido),90);
         it.valorVendido90 = v.valorVendido||0;
         it.lucro90 = v.lucro||((v.valorVendido||0)-(v.custoVendido||0));
-        // Puxar categoria das vendas se não veio da contagem
-        if(!it.categoria && v.categoria) it.categoria = v.categoria;
+        // Puxar categoria do mapa consolidado se não veio da contagem
+        if(!it.categoria) it.categoria = catMap[sku] || v.categoria || '';
         // Custo do CMV
         var custoU = it.custoUnit || (v.qtdVendida>0 ? round2(v.custoVendido/v.qtdVendida) : 0);
         it.custoUnit = custoU;
@@ -329,5 +347,5 @@ var Engine = (function(){
     return Object.keys(skuMap).map(function(k){ return skuMap[k]; });
   }
 
-  return {calcCritica:calcCritica, calcRuptura:calcRuptura, calcDiasEstoque:calcDiasEstoque, calcInvestimentoABC:calcInvestimentoABC, calcProjecaoPerda:calcProjecaoPerda, calcABC:calcABC, buildItemsFromContagem:buildItemsFromContagem, buildCustoMap:buildCustoMap, round2:round2, roundInt:roundInt};
+  return {calcCritica:calcCritica, calcRuptura:calcRuptura, calcDiasEstoque:calcDiasEstoque, calcInvestimentoABC:calcInvestimentoABC, calcProjecaoPerda:calcProjecaoPerda, calcABC:calcABC, buildItemsFromContagem:buildItemsFromContagem, buildCustoMap:buildCustoMap, resolveCusto:resolveCusto, round2:round2, roundInt:roundInt};
 })();
