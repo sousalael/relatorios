@@ -10,35 +10,63 @@ document.getElementById('logo').src=LOGO;
 /* ===== STATE ===== */
 var State = {files:{estoque:null,contagem:null,vendas:null,cadastro:null},mappings:{},rawData:{estoque:[],contagem:[],vendas:[],cadastro:[]},results:{},processDate:'',charts:{},info:{cliente:'',unidade:'',dataInventario:''}};
 
-/* ===== FUZZY MAPPING ===== */
+/* ===== FUZZY MAPPING — com contexto de tipo de arquivo ===== */
 var SYNONYMS = {
-  sku:['sku','codigo','código','cod','cod_prod','cod.prod','codigo produto','código produto','codigo de barras','código de barras','ean','gtin','cod. item','codprod','item','cod_item','codigo_produto','product_code','barcode','cod interno'],
-  descricao:['descricao','descrição','desc','produto','nome','nome produto','nome_produto','description','desc_prod','desc. produto','nome do produto'],
+  sku:['sku','codigo','código','cod','cod_prod','cod.prod','codigo produto','código produto','codigo de barras','código de barras','ean','gtin','cod. item','codprod','item','cod_item','codigo_produto','product_code','barcode','cod interno','cod.item','cod item'],
+  descricao:['descricao','descrição','desc','produto','nome','nome produto','nome_produto','description','desc_prod','desc. produto','nome do produto','desc produto'],
   categoria:['categoria','cat','departamento','dept','depto','seção','secao','setor','grupo','family','familia','família','category','classe','tipo','segmento','sub_grupo','subgrupo'],
   qtdSistema:['qtd sistema','qtd_sistema','quantidade sistema','estoque sistema','saldo sistema','saldo_sistema','estoque_sistema','qtd anterior','quantidade anterior','estoque anterior','system_qty','stock_qty','saldo','estoque','qtd_erp','qtd erp','qtd.sistema'],
   qtdContada:['qtd contada','qtd_contada','quantidade contada','contagem','qtd fisica','qtd_fisica','quantidade fisica','quantidade física','contado','counted_qty','physical_qty','qtd.contada','qtd inventário','qtd. contada'],
-  custoUnit:['custo','custo unit','custo_unit','custo unitario','custo unitário','custo medio','custo médio','preco custo','preço custo','valor unitario','valor unitário','unit_cost','cost','pmc','cmv','custo_unitario','vlr_custo','vlr custo','custo un'],
-  local:['local','localizacao','localização','loja','deposito','depósito','area','área','setor_loja','tipo_local','location','store_area','tipo local','loc','origem','local_contagem','local contagem'],
-  qtdVendida:['qtd vendida','qtd_vendida','quantidade vendida','vendas','venda','qtd venda','qtd_venda','sold_qty','sales_qty','un vendidas','unidades vendidas','qtd.vendida','volume_vendas','vendido'],
-  valorVendido:['valor vendido','valor_vendido','faturamento','receita','venda valor','venda_valor','total vendido','total_vendido','revenue','sales_value','vlr vendido','vlr_vendido','fat','total vendas','valor vendas','receita_bruta'],
-  custoVendido:['custo vendido','custo_vendido','cmv','custo mercadoria','custo_mercadoria','cost_sold','cogs','custo venda','custo_venda','custo das vendas','cmv_total'],
-  lucro:['lucro','lucro bruto','margem','margem bruta','profit','gross_profit','lucro_bruto','resultado','margem_bruta','lucro total','contribuicao','contribuição']
+  custoUnit:['custo unit','custo_unit','custo unitario','custo unitário','custo medio','custo médio','preco custo','preço custo','valor unitario','valor unitário','unit_cost','cost','pmc','custo_unitario','vlr_custo','vlr custo','custo un','preco','preço','vlr unit'],
+  local:['local','localizacao','localização','deposito','depósito','area','área','setor_loja','tipo_local','location','store_area','tipo local','loc','origem','local_contagem','local contagem'],
+  qtdVendida:['qtd vendida','qtd_vendida','quantidade vendida','qtd venda','qtd_venda','sold_qty','sales_qty','un vendidas','unidades vendidas','qtd.vendida','volume_vendas'],
+  valorVendido:['valor vendido','valor_vendido','faturamento','receita','venda valor','venda_valor','total vendido','total_vendido','revenue','sales_value','vlr vendido','vlr_vendido','fat','total vendas','valor vendas','receita_bruta','venda r$','vendas r$','vlr venda','vlr vendas'],
+  custoVendido:['custo vendido','custo_vendido','custo mercadoria','custo_mercadoria','cost_sold','cogs','custo venda','custo_venda','custo das vendas','cmv_total','cmv r$','cmv','custo merc'],
+  lucro:['lucro','lucro bruto','margem','margem bruta','profit','gross_profit','lucro_bruto','resultado','margem_bruta','lucro total','contribuicao','contribuição','lucratividade','rentabilidade','lucro r$']
 };
-function fuzzyMatch(header){
+/* Mapeamento prioritário por tipo: resolve ambiguidade de "Qde" "Qtde" etc */
+var TYPE_PRIORITY = {
+  estoque:{qtdSistema:['qde','qtde','qt','quantidade','qtd','saldo','estoque']},
+  contagem:{qtdContada:['qde','qtde','qt','quantidade','qtd']},
+  vendas:{qtdVendida:['qde','qtde','qt','quantidade','qtd','vendas','venda'],valorVendido:['venda r$','vendas r$'],custoVendido:['cmv r$','cmv']},
+  cadastro:{}
+};
+function fuzzyMatch(header,excludeFields){
   var h=String(header).toLowerCase().trim().replace(/[_\-\.]/g,' ').replace(/\s+/g,' ');
   var best=null,bestScore=0;
   Object.keys(SYNONYMS).forEach(function(field){
+    if(excludeFields&&excludeFields[field])return;
     SYNONYMS[field].forEach(function(syn){
       var s=syn.toLowerCase().trim(),score=0;
-      if(h===s)score=100;else if(h.indexOf(s)>=0||s.indexOf(h)>=0)score=80;
+      if(h===s)score=100;
+      else if(h.indexOf(s)>=0||s.indexOf(h)>=0)score=80;
       else{var w=s.split(' '),m=w.filter(function(x){return h.indexOf(x)>=0}).length;if(m>0)score=50*m/w.length;}
       if(score>bestScore){bestScore=score;best=field;}
     });
   });
   return bestScore>=40?best:null;
 }
+function autoMapHeadersForType(headers,fileType){
+  var m={},usedH={},priorities=TYPE_PRIORITY[fileType]||{};
+  // 1. Prioridades do tipo
+  headers.forEach(function(h){
+    var hL=String(h).toLowerCase().trim().replace(/[_\-\.]/g,' ').replace(/\s+/g,' ');
+    Object.keys(priorities).forEach(function(field){
+      if(m[field])return;
+      priorities[field].forEach(function(syn){if(!m[field]&&(hL===syn||hL.indexOf(syn)>=0||syn.indexOf(hL)>=0)){m[field]=h;usedH[h]=true;}});
+    });
+  });
+  // 2. Fuzzy genérico pro resto
+  var mapped={};Object.keys(m).forEach(function(f){mapped[f]=true;});
+  headers.forEach(function(h){
+    if(usedH[h])return;
+    var f=fuzzyMatch(h,mapped);
+    if(f&&!m[f]){m[f]=h;mapped[f]=true;usedH[h]=true;}
+  });
+  return m;
+}
+function autoMapHeaders(headers){return autoMapHeadersForType(headers,'');}
 function readFile(file,cb){var r=new FileReader();r.onload=function(e){var d=new Uint8Array(e.target.result);var wb=XLSX.read(d,{type:'array'});var sh=wb.Sheets[wb.SheetNames[0]];var json=XLSX.utils.sheet_to_json(sh,{defval:''});cb({headers:json.length?Object.keys(json[0]):[],rows:json,filename:file.name,rowCount:json.length});};r.readAsArrayBuffer(file);}
-function autoMapHeaders(headers){var m={};headers.forEach(function(h){var f=fuzzyMatch(h);if(f&&!m[f])m[f]=h;});return m;}
 function applyMapping(rows,mapping){return rows.map(function(row){var o={};Object.keys(mapping).forEach(function(f){o[f]=row[mapping[f]];});return o;});}
 
 /* ===== UI HELPERS ===== */
@@ -143,7 +171,7 @@ function showFileTypeSelector(result){
 
 function assignFileToSlot(type, result){
   State.files[type]=result;
-  var mapping=autoMapHeaders(result.headers);
+  var mapping=autoMapHeadersForType(result.headers, type);
   State.mappings[type]=mapping;
   State.rawData[type]=applyMapping(result.rows,mapping);
   updateSlot(type,result.filename,result.rowCount);
