@@ -1,0 +1,274 @@
+/* app.js — Upload, fuzzy mapping, tab nav, rendering — v2 com categorias em todos os relatórios */
+(function(){
+"use strict";
+Chart.register(ChartDataLabels);
+
+var LOGO='data:image/png;base64,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';
+document.getElementById('logo').src=LOGO;
+
+var State = {files:{estoque:null,contagem:null,vendas:null,cadastro:null},mappings:{},rawData:{estoque:[],contagem:[],vendas:[],cadastro:[]},results:{},processDate:'',charts:{}};
+
+/* ===== FUZZY MAPPING (same as v1) ===== */
+var SYNONYMS = {
+  sku:['sku','codigo','código','cod','cod_prod','cod.prod','codigo produto','código produto','codigo de barras','código de barras','ean','gtin','cod. item','codprod','item','cod_item','codigo_produto','product_code','barcode','cod interno'],
+  descricao:['descricao','descrição','desc','produto','nome','nome produto','nome_produto','description','desc_prod','desc. produto','nome do produto'],
+  categoria:['categoria','cat','departamento','dept','depto','seção','secao','setor','grupo','family','familia','família','category','classe','tipo','segmento','sub_grupo','subgrupo'],
+  qtdSistema:['qtd sistema','qtd_sistema','quantidade sistema','estoque sistema','saldo sistema','saldo_sistema','estoque_sistema','qtd anterior','quantidade anterior','estoque anterior','system_qty','stock_qty','saldo','estoque','qtd_erp','qtd erp','qtd.sistema'],
+  qtdContada:['qtd contada','qtd_contada','quantidade contada','contagem','qtd fisica','qtd_fisica','quantidade fisica','quantidade física','contado','counted_qty','physical_qty','qtd.contada','qtd inventário','qtd. contada'],
+  custoUnit:['custo','custo unit','custo_unit','custo unitario','custo unitário','custo medio','custo médio','preco custo','preço custo','valor unitario','valor unitário','unit_cost','cost','pmc','cmv','custo_unitario','vlr_custo','vlr custo','custo un'],
+  local:['local','localizacao','localização','loja','deposito','depósito','area','área','setor_loja','tipo_local','location','store_area','tipo local','loc','origem','local_contagem','local contagem'],
+  qtdVendida:['qtd vendida','qtd_vendida','quantidade vendida','vendas','venda','qtd venda','qtd_venda','sold_qty','sales_qty','un vendidas','unidades vendidas','qtd.vendida','volume_vendas','vendido'],
+  valorVendido:['valor vendido','valor_vendido','faturamento','receita','venda valor','venda_valor','total vendido','total_vendido','revenue','sales_value','vlr vendido','vlr_vendido','fat','total vendas','valor vendas','receita_bruta'],
+  custoVendido:['custo vendido','custo_vendido','cmv','custo mercadoria','custo_mercadoria','cost_sold','cogs','custo venda','custo_venda','custo das vendas','cmv_total'],
+  lucro:['lucro','lucro bruto','margem','margem bruta','profit','gross_profit','lucro_bruto','resultado','margem_bruta','lucro total','contribuicao','contribuição']
+};
+function fuzzyMatch(header){
+  var h=String(header).toLowerCase().trim().replace(/[_\-\.]/g,' ').replace(/\s+/g,' ');
+  var best=null,bestScore=0;
+  Object.keys(SYNONYMS).forEach(function(field){
+    SYNONYMS[field].forEach(function(syn){
+      var s=syn.toLowerCase().trim(),score=0;
+      if(h===s) score=100; else if(h.indexOf(s)>=0||s.indexOf(h)>=0) score=80;
+      else{var w=s.split(' '),m=w.filter(function(x){return h.indexOf(x)>=0}).length;if(m>0) score=50*m/w.length;}
+      if(score>bestScore){bestScore=score;best=field;}
+    });
+  });
+  return bestScore>=40?best:null;
+}
+function readFile(file,cb){var r=new FileReader();r.onload=function(e){var d=new Uint8Array(e.target.result);var wb=XLSX.read(d,{type:'array'});var sh=wb.Sheets[wb.SheetNames[0]];var json=XLSX.utils.sheet_to_json(sh,{defval:''});cb({headers:json.length?Object.keys(json[0]):[],rows:json,filename:file.name,rowCount:json.length});};r.readAsArrayBuffer(file);}
+var FILE_FIELDS={estoque:['sku','qtdSistema','custoUnit'],contagem:['sku','qtdContada','local'],vendas:['sku','qtdVendida','valorVendido'],cadastro:['sku','descricao']};
+function guessFileType(headers){var scores={};Object.keys(FILE_FIELDS).forEach(function(type){var m=0;FILE_FIELDS[type].forEach(function(f){headers.forEach(function(h){if(fuzzyMatch(h)===f)m++;});});scores[type]=m;});var best=null,bs=0;Object.keys(scores).forEach(function(t){if(scores[t]>bs){bs=scores[t];best=t;}});return bs>=2?best:null;}
+function autoMapHeaders(headers){var m={};headers.forEach(function(h){var f=fuzzyMatch(h);if(f&&!m[f])m[f]=h;});return m;}
+function applyMapping(rows,mapping){return rows.map(function(row){var o={};Object.keys(mapping).forEach(function(f){o[f]=row[mapping[f]];});return o;});}
+
+/* ===== UI HELPERS ===== */
+var BRL=function(v){return(v<0?'−':'')+'R$ '+Math.abs(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});};
+var BRLi=function(v){return(v<0?'−':'')+'R$ '+Math.abs(Math.round(v||0)).toLocaleString('pt-BR');};
+var PCT=function(v){return(v||0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';};
+var NUM=function(v){return(v||0).toLocaleString('pt-BR');};
+function $(id){return document.getElementById(id);}
+
+/* ===== TABS ===== */
+document.querySelectorAll('.tab').forEach(function(tab){
+  tab.addEventListener('click',function(){
+    if(this.classList.contains('disabled'))return;
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active')});
+    this.classList.add('active');
+    $('panel-'+this.dataset.tab).classList.add('active');
+  });
+});
+
+/* ===== UPLOAD ===== */
+var dropZone=$('dropZone'),fileInput=$('fileInput');
+dropZone.addEventListener('click',function(){fileInput.click();});
+dropZone.addEventListener('dragover',function(e){e.preventDefault();this.classList.add('dragover');});
+dropZone.addEventListener('dragleave',function(){this.classList.remove('dragover');});
+dropZone.addEventListener('drop',function(e){e.preventDefault();this.classList.remove('dragover');handleFiles(e.dataTransfer.files);});
+fileInput.addEventListener('change',function(){handleFiles(this.files);});
+function handleFiles(files){for(var i=0;i<files.length;i++){(function(f){readFile(f,function(r){var t=guessFileType(r.headers);if(t){State.files[t]=r;State.mappings[t]=autoMapHeaders(r.headers);State.rawData[t]=applyMapping(r.rows,State.mappings[t]);updateSlot(t,r.filename,r.rowCount);}else{showMappingModal(r);}checkReady();});})(files[i]);}}
+function updateSlot(type,fn,cnt){var s=$('slot-'+type);s.querySelector('.file-slot-name').textContent=fn;var st=s.querySelector('.file-slot-status');st.textContent='✓ '+cnt.toLocaleString('pt-BR')+' linhas carregadas';st.className='file-slot-status loaded';}
+function checkReady(){$('btnProcess').disabled=!(State.files.estoque&&State.files.contagem&&State.files.vendas);}
+
+/* ===== MAPPING MODAL ===== */
+var pendingFile=null;
+function showMappingModal(result){pendingFile=result;$('mappingTitle').textContent='Mapeamento: '+result.filename;var body=$('mappingBody');body.innerHTML='';var types=['estoque','contagem','vendas','cadastro'];var tr=document.createElement('div');tr.className='mapping-row';tr.innerHTML='<div class="mapping-field">Tipo de arquivo:</div>';var sel=document.createElement('select');sel.className='mapping-select';sel.id='mappingType';types.forEach(function(t){sel.innerHTML+='<option value="'+t+'">'+t.charAt(0).toUpperCase()+t.slice(1)+'</option>';});tr.appendChild(sel);body.appendChild(tr);body.appendChild(document.createElement('br'));var allF=Object.keys(SYNONYMS);result.headers.forEach(function(h){var row=document.createElement('div');row.className='mapping-row';var g=fuzzyMatch(h);row.innerHTML='<div class="mapping-field" style="font-weight:400">'+h+'</div><div class="mapping-arrow">→</div>';var s=document.createElement('select');s.className='mapping-select';s.dataset.original=h;s.innerHTML='<option value="">(ignorar)</option>';allF.forEach(function(f){s.innerHTML+='<option value="'+f+'"'+(g===f?' selected':'')+'>'+f+'</option>';});row.appendChild(s);body.appendChild(row);});$('mappingModal').classList.add('active');}
+$('btnMappingConfirm').addEventListener('click',function(){if(!pendingFile)return;var t=$('mappingType').value,m={};$('mappingBody').querySelectorAll('select.mapping-select').forEach(function(s){if(s.id==='mappingType')return;if(s.value)m[s.value]=s.dataset.original;});State.files[t]=pendingFile;State.mappings[t]=m;State.rawData[t]=applyMapping(pendingFile.rows,m);updateSlot(t,pendingFile.filename,pendingFile.rowCount);$('mappingModal').classList.remove('active');pendingFile=null;checkReady();});
+$('btnMappingCancel').addEventListener('click',function(){$('mappingModal').classList.remove('active');pendingFile=null;});
+
+/* ===== PROCESS ===== */
+$('btnProcess').addEventListener('click',processAll);
+function processAll(){var bar=$('progressBar');bar.style.display='block';var fill=$('progressFill');fill.style.width='10%';State.processDate=new Date().toLocaleString('pt-BR');$('headerDate').textContent='Processado em '+State.processDate;setTimeout(function(){fill.style.width='30%';State.results.critica=Engine.calcCritica(State.rawData.estoque,State.rawData.contagem,State.rawData.cadastro);fill.style.width='50%';setTimeout(function(){State.results.ruptura=Engine.calcRuptura(State.rawData.contagem,State.rawData.vendas);fill.style.width='65%';setTimeout(function(){State.results.dias=Engine.calcDiasEstoque(State.results.critica,State.rawData.vendas);fill.style.width='80%';setTimeout(function(){State.results.abc=Engine.calcInvestimentoABC(State.results.critica,State.rawData.vendas);State.results.perda=Engine.calcProjecaoPerda(State.results.ruptura);fill.style.width='100%';setTimeout(function(){bar.style.display='none';enableTabs();renderAll();},300);},50);},50);},50);},50);}
+function enableTabs(){document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('disabled');});document.querySelector('.tab[data-tab="critica"]').click();}
+
+/* ===== RENDER HELPERS ===== */
+function destroyChart(id){if(State.charts[id]){State.charts[id].destroy();delete State.charts[id];}}
+function renderTable(p,headers,rows,page,perPage,opts){
+  opts=opts||{};page=page||1;perPage=perPage||100;
+  var start=(page-1)*perPage,pageRows=rows.slice(start,start+perPage),totalPages=Math.ceil(rows.length/perPage);
+  var html='<div class="table-wrap"><table class="data-table"><thead><tr>';
+  headers.forEach(function(h){html+='<th>'+h.label+'</th>';});
+  html+='</tr></thead><tbody>';
+  pageRows.forEach(function(row){
+    var cls=opts.rowClass?opts.rowClass(row):'';
+    html+='<tr class="'+cls+'">';
+    headers.forEach(function(h){var val=h.render?h.render(row):(row[h.field]||'');html+='<td class="'+(h.align||'')+'">'+val+'</td>';});
+    html+='</tr>';});
+  html+='</tbody></table></div>';
+  if(totalPages>1){html+='<div class="pagination"><button onclick="changePage(\''+p.id+'\','+(page-1)+')"'+(page<=1?' disabled':'')+'>← Anterior</button><span>Pág. '+page+'/'+totalPages+' ('+rows.length.toLocaleString('pt-BR')+' itens)</span><button onclick="changePage(\''+p.id+'\','+(page+1)+')"'+(page>=totalPages?' disabled':'')+'>Próxima →</button></div>';}
+  return html;
+}
+var renderFns={};window.changePage=function(pid,pg){if(renderFns[pid])renderFns[pid](pg);};
+
+/* Helper: gera HTML de cards de categoria (genérico) */
+function renderCatCards(catList, fields){
+  var html='<div class="cat-grid">';
+  catList.forEach(function(cat){
+    html+='<div class="cat-card"><div class="cat-name">'+cat.nome+'</div>';
+    fields.forEach(function(f){
+      var val=f.fmt?f.fmt(cat[f.key]):cat[f.key];
+      var cls=f.color?f.color(cat[f.key]):'';
+      html+='<div class="cat-row"><span class="cat-label">'+f.label+'</span><span class="cat-val '+cls+'">'+val+'</span></div>';
+    });
+    html+='</div>';
+  });
+  html+='</div>';
+  return html;
+}
+/* Helper: gera pills de filtro de categoria */
+function renderCatFilterPills(catList, currentFilter, fnName){
+  var html='<span style="color:var(--fc-muted);margin:0 2px">|</span>';
+  html+='<span class="pill cat-pill '+(currentFilter==='all'?'active':'')+'" onclick="App.'+fnName+'(\'all\')">Todas categ.</span>';
+  catList.forEach(function(cat){
+    html+='<span class="pill cat-pill '+(currentFilter===cat.nome?'active':'')+'" onclick="App.'+fnName+'(\''+cat.nome.replace(/'/g,"\\'")+'\')">'+cat.nome+'</span>';
+  });
+  return html;
+}
+
+function renderAll(){renderCritica();renderRuptura();renderDias();renderABC();renderPerda();}
+
+/* ===== 1. CRITICA ===== */
+function renderCritica(page){
+  var c=State.results.critica, p=$('panel-critica');
+  var fS=p.dataset.filterStatus||'all', fC=p.dataset.filterCat||'all', srch=p.dataset.search||'';
+  var filtered=c.items.filter(function(i){if(fS!=='all'&&i.status.toLowerCase()!==fS)return false;if(fC!=='all'&&(i.categoria||'Sem categoria')!==fC)return false;if(srch&&(i.sku+' '+i.descricao).toLowerCase().indexOf(srch.toLowerCase())<0)return false;return true;});
+  var html='<div class="metrics">';
+  html+='<div class="metric"><div class="metric-label">Acuracidade</div><div class="metric-value text-green">'+PCT(c.acuracidade)+'</div><div class="metric-detail">'+NUM(c.okCount)+' de '+NUM(c.totalSKUs)+' SKUs</div></div>';
+  html+='<div class="metric"><div class="metric-label">Valor das faltas</div><div class="metric-value text-red">'+BRLi(c.totalFaltas)+'</div><div class="metric-detail">'+NUM(c.faltaCount)+' SKUs</div></div>';
+  html+='<div class="metric"><div class="metric-label">Valor das sobras</div><div class="metric-value text-amber">'+BRLi(c.totalSobras)+'</div><div class="metric-detail">'+NUM(c.sobraCount)+' SKUs</div></div>';
+  html+='<div class="metric"><div class="metric-label">Saldo líquido</div><div class="metric-value text-red">'+BRLi(c.saldoLiquido)+'</div><div class="metric-detail">Faltas − sobras</div></div>';
+  html+='</div>';
+  if(c.hasCategorias){
+    html+='<div class="section-title"><i class="ti ti-category"></i> Resultado por categoria</div>';
+    html+=renderCatCards(c.categorias,[{label:'Acuracidade',key:'acuracidade',fmt:PCT,color:function(){return 'text-green';}},{label:'Faltas',key:'faltaVal',fmt:BRLi,color:function(){return 'text-red';}},{label:'Sobras',key:'sobraVal',fmt:BRLi,color:function(v){return v>0?'text-amber':'text-muted';}},{label:'Saldo',key:'saldo',fmt:BRLi,color:function(v){return v<0?'text-red':'text-green';}}]);
+    html+='<div class="chart-legend"><span class="legend-item"><span class="legend-dot" style="background:#D32F2F"></span>Faltas (R$)</span><span class="legend-item"><span class="legend-dot" style="background:#F57C00"></span>Sobras (R$)</span></div>';
+    html+='<div class="chart-wrap" style="height:'+Math.max(160,c.categorias.length*50)+'px"><canvas id="chartCritica"></canvas></div>';
+  }
+  html+='<div class="toolbar"><input class="search-input" placeholder="Buscar SKU ou descrição..." value="'+srch+'" onkeyup="App.filterCritica(this.value)">';
+  html+='<span class="pill '+(fS==='all'?'active':'')+'" onclick="App.filterCriticaStatus(\'all\')">Todos</span><span class="pill '+(fS==='falta'?'active':'')+'" onclick="App.filterCriticaStatus(\'falta\')">Faltas</span><span class="pill '+(fS==='sobra'?'active':'')+'" onclick="App.filterCriticaStatus(\'sobra\')">Sobras</span><span class="pill '+(fS==='ok'?'active':'')+'" onclick="App.filterCriticaStatus(\'ok\')">Sem diverg.</span>';
+  if(c.hasCategorias) html+=renderCatFilterPills(c.categorias,fC,'filterCriticaCat');
+  html+='<button class="btn-export" onclick="App.openExport()"><i class="ti ti-download"></i> Excel</button><button class="btn-export btn-pdf" onclick="App.exportPDF(\'critica\')"><i class="ti ti-file-text"></i> PDF</button></div>';
+  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'Qtd sist.',field:'qtdSistema',align:'text-right'},{label:'Qtd cont.',field:'qtdContada',align:'text-right'},{label:'Dif. qtd',field:'difQtd',align:'text-right',render:function(r){return '<span class="'+(r.difQtd<0?'text-red':(r.difQtd>0?'text-green':'text-muted'))+'">'+r.difQtd+'</span>';}},{label:'Custo unit.',field:'custoUnit',align:'text-right',render:function(r){return BRL(r.custoUnit);}},{label:'Dif. R$',field:'difValor',align:'text-right',render:function(r){return '<span class="'+(r.difValor<0?'text-red':(r.difValor>0?'text-green':'text-muted'))+'">'+BRL(r.difValor)+'</span>';}},{label:'Status',field:'status',align:'text-center',render:function(r){var cls=r.status==='Falta'?'badge-falta':(r.status==='Sobra'?'badge-sobra':'badge-ok');return '<span class="badge '+cls+'">'+r.status+'</span>';}}];
+  html+=renderTable(p,th,filtered,page||1,100);
+  p.innerHTML=html; renderFns['panel-critica']=renderCritica;
+  if(c.hasCategorias){destroyChart('chartCritica');var ctx=document.getElementById('chartCritica');if(ctx){State.charts.chartCritica=new Chart(ctx,{type:'bar',data:{labels:c.categorias.map(function(c){return c.nome;}),datasets:[{label:'Faltas',data:c.categorias.map(function(c){return Math.abs(c.faltaVal);}),backgroundColor:'#D32F2F',borderRadius:4,barPercentage:.65},{label:'Sobras',data:c.categorias.map(function(c){return c.sobraVal;}),backgroundColor:'#F57C00',borderRadius:4,barPercentage:.65}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:function(c){return c.dataset.backgroundColor;},font:{size:10,weight:'bold'},formatter:function(v){return 'R$ '+v.toLocaleString('pt-BR');}}},scales:{x:{grid:{color:'#f0f0f0'},ticks:{font:{size:10},callback:function(v){return 'R$ '+(v/1000).toFixed(0)+'k';}}},y:{grid:{display:false},ticks:{font:{size:10}}}},layout:{padding:{right:80}}}});}}
+}
+
+/* ===== 2. RUPTURA ===== */
+function renderRuptura(page){
+  var r=State.results.ruptura, p=$('panel-ruptura');
+  var fA=p.dataset.filterAbc||'all', fC=p.dataset.filterCat||'all', srch=p.dataset.search||'';
+  var filtered=r.items.filter(function(i){if(fA!=='all'&&i.abc_valorVendido90!==fA)return false;if(fC!=='all'&&(i.categoria||'Sem categoria')!==fC)return false;if(srch&&(i.sku+' '+i.descricao).toLowerCase().indexOf(srch.toLowerCase())<0)return false;return true;});
+  var html='<div class="metrics">';
+  html+='<div class="metric"><div class="metric-label">Taxa de ruptura geral</div><div class="metric-value text-red">'+PCT(r.taxaRuptura)+'</div></div>';
+  html+='<div class="metric"><div class="metric-label">SKUs em ruptura</div><div class="metric-value">'+NUM(r.totalRupturas)+'</div><div class="metric-detail">de '+NUM(r.totalComDeposito)+' com depósito</div></div>';
+  html+='<div class="metric"><div class="metric-label">Ruptura classe A (fat.)</div><div class="metric-value text-red">'+PCT(r.taxaA)+'</div></div>';
+  html+='<div class="metric"><div class="metric-label">Ruptura classe A (lucro)</div><div class="metric-value text-red">'+PCT(r.taxaALucro)+'</div></div>';
+  html+='</div>';
+  if(r.rupturaA>0) html+='<div class="alert alert-danger"><i class="ti ti-alert-circle"></i><div><strong>'+NUM(r.rupturaA)+' itens classe A</strong> estão em ruptura — produtos de maior venda ausentes no salão</div></div>';
+  if(r.hasCategorias){
+    html+='<div class="section-title"><i class="ti ti-category"></i> Ruptura por categoria</div>';
+    html+=renderCatCards(r.categorias,[{label:'Rupturas',key:'totalRupturas',fmt:NUM,color:function(v){return v>0?'text-red':'';}},{label:'Taxa ruptura',key:'taxa',fmt:PCT,color:function(){return 'text-red';}},{label:'Rupturas classe A',key:'rupturaA',fmt:NUM,color:function(v){return v>0?'text-red':'text-muted';}},{label:'Perda fat./dia',key:'perdaDia',fmt:BRLi,color:function(){return 'text-red';}}]);
+  }
+  html+='<div class="loss-cards"><div class="loss-card a"><div class="loss-title">Classe A em ruptura</div><div class="loss-main">'+NUM(r.rupturaA)+' SKUs</div><div class="loss-sub">Ação imediata</div></div><div class="loss-card b"><div class="loss-title">Classe B em ruptura</div><div class="loss-main">'+NUM(r.rupturaB)+' SKUs</div><div class="loss-sub">Atenção</div></div><div class="loss-card c"><div class="loss-title">Classe C em ruptura</div><div class="loss-main">'+NUM(r.rupturaC)+' SKUs</div><div class="loss-sub">Monitorar</div></div></div>';
+  html+='<div class="toolbar"><input class="search-input" placeholder="Buscar..." value="'+srch+'" onkeyup="App.filterRupturaSearch(this.value)">';
+  html+='<span class="pill '+(fA==='all'?'active':'')+'" onclick="App.filterRupturaAbc(\'all\')">Todos</span><span class="pill '+(fA==='A'?'active':'')+'" onclick="App.filterRupturaAbc(\'A\')">Classe A</span><span class="pill '+(fA==='B'?'active':'')+'" onclick="App.filterRupturaAbc(\'B\')">Classe B</span><span class="pill '+(fA==='C'?'active':'')+'" onclick="App.filterRupturaAbc(\'C\')">Classe C</span>';
+  if(r.hasCategorias) html+=renderCatFilterPills(r.categorias,fC,'filterRupturaCat');
+  html+='<button class="btn-export" onclick="App.openExport()"><i class="ti ti-download"></i> Excel</button><button class="btn-export btn-pdf" onclick="App.exportPDF(\'ruptura\')"><i class="ti ti-file-text"></i> PDF</button></div>';
+  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'ABC fat.',field:'abc_valorVendido90',align:'text-center',render:function(r){return '<span class="badge badge-'+(r.abc_valorVendido90||'c').toLowerCase()+'">'+r.abc_valorVendido90+'</span>';}},{label:'ABC lucro',align:'text-center',render:function(r){return '<span class="badge badge-'+(r.abc_lucro90||'c').toLowerCase()+'">'+r.abc_lucro90+'</span>';}},{label:'Qtd dep.',field:'deposito',align:'text-right'},{label:'Qtd loja',field:'loja',align:'text-right',render:function(r){return '<span class="text-red">'+r.loja+'</span>';}},{label:'Venda méd/dia',align:'text-right',render:function(r){return Engine.round2(r.vendaMediaDia||0)+' un';}},{label:'Fat. méd/dia',align:'text-right',render:function(r){return BRL(r.fatMediaDia||0);}}];
+  html+=renderTable(p,th,filtered,page||1,100,{rowClass:function(r){return r.abc_valorVendido90==='A'?'row-a':(r.abc_valorVendido90==='B'?'row-b':'');}});
+  p.innerHTML=html; renderFns['panel-ruptura']=renderRuptura;
+}
+
+/* ===== 3. DIAS ESTOQUE ===== */
+function renderDias(page){
+  var d=State.results.dias, p=$('panel-dias');
+  var fF=p.dataset.filterFaixa||'all', fC=p.dataset.filterCat||'all', srch=p.dataset.search||'';
+  var filtered=d.items.filter(function(i){if(fF!=='all'&&i.faixa!==fF)return false;if(fC!=='all'&&(i.categoria||'Sem categoria')!==fC)return false;if(srch&&(i.sku+' '+i.descricao).toLowerCase().indexOf(srch.toLowerCase())<0)return false;return true;});
+  var html='<div class="metrics">';
+  html+='<div class="metric"><div class="metric-label">Cobertura média geral</div><div class="metric-value">'+d.mediaGeral+' dias</div></div>';
+  html+='<div class="metric"><div class="metric-label">SKUs sem giro</div><div class="metric-value text-red">'+NUM(d.semGiro)+'</div></div>';
+  html+='<div class="metric"><div class="metric-label">Cobertura classe A</div><div class="metric-value">'+d.mediaA+' dias</div></div>';
+  html+='<div class="metric"><div class="metric-label">Overstock (60+ dias)</div><div class="metric-value text-blue">'+NUM(d.excessos)+'</div><div class="metric-detail">'+BRLi(d.valorExcesso)+' investidos</div></div>';
+  html+='</div>';
+  if(d.hasCategorias){
+    html+='<div class="section-title"><i class="ti ti-category"></i> Cobertura por categoria</div>';
+    html+=renderCatCards(d.categorias,[{label:'Cobertura média',key:'mediaCobertura',fmt:function(v){return v+' dias';},color:function(){return '';}},{label:'Críticos (0-7d)',key:'criticos',fmt:NUM,color:function(v){return v>0?'text-red':'text-muted';}},{label:'Sem giro',key:'semGiro',fmt:NUM,color:function(v){return v>0?'text-red':'text-muted';}},{label:'Excesso (60+d)',key:'excessos',fmt:NUM,color:function(v){return v>0?'text-blue':'text-muted';}},{label:'Val. excesso',key:'valorExcesso',fmt:BRLi,color:function(){return 'text-blue';}}]);
+  }
+  html+='<div class="dist-grid"><div class="dist-card crit"><div class="dist-label">Crítico (0-7 dias)</div><div class="dist-val">'+NUM(d.criticos)+'</div><div class="dist-sub">'+PCT(d.total?d.criticos/d.total*100:0)+'</div></div><div class="dist-card low"><div class="dist-label">Baixo (8-15 dias)</div><div class="dist-val">'+NUM(d.baixos)+'</div><div class="dist-sub">'+PCT(d.total?d.baixos/d.total*100:0)+'</div></div><div class="dist-card ok"><div class="dist-label">Adequado (16-60 dias)</div><div class="dist-val">'+NUM(d.adequados)+'</div><div class="dist-sub">'+PCT(d.total?d.adequados/d.total*100:0)+'</div></div><div class="dist-card high"><div class="dist-label">Excesso (60+ dias)</div><div class="dist-val">'+NUM(d.excessos)+'</div><div class="dist-sub">'+PCT(d.total?d.excessos/d.total*100:0)+'</div></div></div>';
+  html+='<div class="toolbar"><input class="search-input" placeholder="Buscar..." value="'+srch+'" onkeyup="App.filterDiasSearch(this.value)">';
+  ['all','Crítico','Baixo','Adequado','Excesso','Sem giro'].forEach(function(f){html+='<span class="pill '+(fF===f?'active':'')+'" onclick="App.filterDiasFaixa(\''+f+'\')">'+(f==='all'?'Todos':f)+'</span>';});
+  if(d.hasCategorias) html+=renderCatFilterPills(d.categorias,fC,'filterDiasCat');
+  html+='<button class="btn-export" onclick="App.openExport()"><i class="ti ti-download"></i> Excel</button><button class="btn-export btn-pdf" onclick="App.exportPDF(\'dias\')"><i class="ti ti-file-text"></i> PDF</button></div>';
+  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'Qtd estoque',field:'qtdEstoque',align:'text-right'},{label:'Venda méd/dia',align:'text-right',render:function(r){return r.vendaMediaDia!==null?Engine.round2(r.vendaMediaDia):'—';}},{label:'Dias estoque',align:'text-right',render:function(r){return r.diasEstoque!==null?Engine.round2(r.diasEstoque):'—';}},{label:'Cobertura',align:'text-center',render:function(r){var cls={'Crítico':'badge-falta','Baixo':'badge-sobra','Adequado':'badge-ok','Excesso':'badge-b','Sem giro':'badge-c'};return '<span class="badge '+(cls[r.faixa]||'')+'">'+r.faixa+'</span>';}},{label:'Val. estoque',align:'text-right',render:function(r){return BRL(r.valorEstoque);}},{label:'ABC fat.',field:'abcFat',align:'text-center'}];
+  html+=renderTable(p,th,filtered,page||1,100);
+  p.innerHTML=html; renderFns['panel-dias']=renderDias;
+}
+
+/* ===== 4. INVESTIMENTO ABC ===== */
+function renderABC(page){
+  var a=State.results.abc, p=$('panel-abc');
+  var fC=p.dataset.filterCat||'all', srch=p.dataset.search||'';
+  var filtered=a.items.filter(function(i){if(fC!=='all'&&(i.categoria||'Sem categoria')!==fC)return false;if(srch&&(i.sku+' '+i.descricao).toLowerCase().indexOf(srch.toLowerCase())<0)return false;return true;});
+  var html='<div class="metrics"><div class="metric"><div class="metric-label">Investimento total</div><div class="metric-value">'+BRLi(a.totalInvest)+'</div></div><div class="metric"><div class="metric-label">Faturamento 90 dias</div><div class="metric-value">'+BRLi(a.totalFat)+'</div></div><div class="metric"><div class="metric-label">Lucro 90 dias</div><div class="metric-value">'+BRLi(a.totalLucro)+'</div></div><div class="metric"><div class="metric-label">SKUs analisados</div><div class="metric-value">'+NUM(a.items.length)+'</div></div></div>';
+  html+='<div class="summary-pair"><div class="summary-card"><div class="summary-header fat">Curva ABC por faturamento</div>';
+  [{c:'A',d:a.fatA},{c:'B',d:a.fatB},{c:'C',d:a.fatC}].forEach(function(x){html+='<div class="summary-row"><span class="summary-class text-'+(x.c==='A'?'red':(x.c==='B'?'amber':'muted'))+'">'+x.c+'</span><div class="bar-track"><div class="bar-fill" style="width:'+x.d.pctInvest+'%;background:var(--fc-navy);opacity:.7"></div></div><span class="summary-pct">'+PCT(x.d.pctInvest)+' invest.</span></div><div class="summary-row"><span class="summary-class" style="visibility:hidden">'+x.c+'</span><div class="bar-track"><div class="bar-fill" style="width:'+x.d.pctFat+'%;background:var(--fc-green);opacity:.7"></div></div><span class="summary-pct">'+PCT(x.d.pctFat)+' fat.</span></div>';});
+  html+='</div><div class="summary-card"><div class="summary-header luc">Curva ABC por lucro</div>';
+  [{c:'A',d:a.lucA},{c:'B',d:a.lucB},{c:'C',d:a.lucC}].forEach(function(x){html+='<div class="summary-row"><span class="summary-class text-'+(x.c==='A'?'red':(x.c==='B'?'amber':'muted'))+'">'+x.c+'</span><div class="bar-track"><div class="bar-fill" style="width:'+x.d.pctInvest+'%;background:var(--fc-navy);opacity:.7"></div></div><span class="summary-pct">'+PCT(x.d.pctInvest)+' invest.</span></div><div class="summary-row"><span class="summary-class" style="visibility:hidden">'+x.c+'</span><div class="bar-track"><div class="bar-fill" style="width:'+x.d.pctLuc+'%;background:var(--fc-green);opacity:.7"></div></div><span class="summary-pct">'+PCT(x.d.pctLuc)+' lucro</span></div>';});
+  html+='</div></div>';
+  if(a.fatC.pctInvest>a.fatC.pctFat+5) html+='<div class="alert alert-warning"><i class="ti ti-bulb"></i><div>Itens classe C consomem '+PCT(a.fatC.pctInvest)+' do capital investido mas geram apenas '+PCT(a.fatC.pctFat)+' da receita.</div></div>';
+  if(a.hasCategorias){
+    html+='<div class="section-title"><i class="ti ti-category"></i> Investimento por categoria</div>';
+    html+=renderCatCards(a.categorias,[{label:'SKUs',key:'total',fmt:NUM,color:function(){return '';}},{label:'Investimento',key:'investimento',fmt:BRLi,color:function(){return '';}},{label:'Faturamento',key:'faturamento',fmt:BRLi,color:function(){return 'text-green';}},{label:'Lucro',key:'lucro',fmt:BRLi,color:function(v){return v>=0?'text-green':'text-red';}},{label:'% do invest.',key:'pctInvest',fmt:PCT,color:function(){return '';}}]);
+  }
+  html+='<div class="toolbar"><input class="search-input" placeholder="Buscar..." value="'+srch+'" onkeyup="App.filterAbcSearch(this.value)">';
+  if(a.hasCategorias) html+=renderCatFilterPills(a.categorias,fC,'filterAbcCat');
+  html+='<button class="btn-export" onclick="App.openExport()"><i class="ti ti-download"></i> Excel</button><button class="btn-export btn-pdf" onclick="App.exportPDF(\'abc\')"><i class="ti ti-file-text"></i> PDF</button></div>';
+  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'ABC fat.',align:'text-center',render:function(r){return '<span class="badge badge-'+r.abcFat.toLowerCase()+'">'+r.abcFat+'</span>';}},{label:'ABC lucro',align:'text-center',render:function(r){return '<span class="badge badge-'+r.abcLucro.toLowerCase()+'">'+r.abcLucro+'</span>';}},{label:'Qtd estoque',field:'qtdEstoque',align:'text-right'},{label:'Val. invest.',align:'text-right',render:function(r){return BRL(r.valorInvestido);}},{label:'Fat. 90d',align:'text-right',render:function(r){return BRL(r.fat90);}},{label:'Lucro 90d',align:'text-right',render:function(r){return BRL(r.lucro90);}}];
+  html+=renderTable(p,th,filtered,page||1,100);
+  p.innerHTML=html; renderFns['panel-abc']=renderABC;
+}
+
+/* ===== 5. PROJECAO PERDA ===== */
+function renderPerda(page){
+  var pe=State.results.perda, p=$('panel-perda');
+  var fC=p.dataset.filterCat||'all', srch=p.dataset.search||'';
+  var filtered=pe.items.filter(function(i){if(fC!=='all'&&(i.categoria||'Sem categoria')!==fC)return false;if(srch&&(i.sku+' '+i.descricao).toLowerCase().indexOf(srch.toLowerCase())<0)return false;return true;});
+  var html='<div class="metrics"><div class="metric"><div class="metric-label">Venda perdida / dia</div><div class="metric-value text-red">'+BRLi(pe.totalPerdaFat)+'</div></div><div class="metric"><div class="metric-label">Lucro perdido / dia</div><div class="metric-value text-red">'+BRLi(pe.totalPerdaLucro)+'</div></div><div class="metric"><div class="metric-label">Perda mensal (fat.)</div><div class="metric-value text-red">'+BRLi(pe.perdaMensal)+'</div></div><div class="metric"><div class="metric-label">SKUs em ruptura</div><div class="metric-value">'+NUM(pe.totalSKUs)+'</div></div></div>';
+  html+='<div class="loss-cards"><div class="loss-card a"><div class="loss-title">Classe A — perda/dia</div><div class="loss-main">'+BRLi(pe.classA.perda)+'</div><div class="loss-sub">'+PCT(pe.classA.pct)+' — '+NUM(pe.classA.count)+' SKUs</div></div><div class="loss-card b"><div class="loss-title">Classe B — perda/dia</div><div class="loss-main">'+BRLi(pe.classB.perda)+'</div><div class="loss-sub">'+PCT(pe.classB.pct)+' — '+NUM(pe.classB.count)+' SKUs</div></div><div class="loss-card c"><div class="loss-title">Classe C — perda/dia</div><div class="loss-main">'+BRLi(pe.classC.perda)+'</div><div class="loss-sub">'+PCT(pe.classC.pct)+' — '+NUM(pe.classC.count)+' SKUs</div></div></div>';
+  html+='<div class="alert alert-danger"><i class="ti ti-alert-triangle"></i><div><strong>Impacto classe A:</strong> Diário: '+BRLi(pe.classA.perda)+' | Semanal: '+BRLi(pe.classA.perda*7)+' | Mensal: '+BRLi(pe.classA.perda*30)+' | Lucro mensal perdido: '+BRLi(pe.classA.lucro*30)+'</div></div>';
+  if(pe.hasCategorias){
+    html+='<div class="section-title"><i class="ti ti-category"></i> Perda projetada por categoria</div>';
+    html+=renderCatCards(pe.categorias,[{label:'Rupturas',key:'totalRupturas',fmt:NUM,color:function(){return '';}},{label:'Perda fat./dia',key:'perdaFatDia',fmt:BRLi,color:function(){return 'text-red';}},{label:'Perda lucro/dia',key:'perdaLucroDia',fmt:BRLi,color:function(){return 'text-red';}},{label:'Perda mensal',key:'perdaMensal',fmt:BRLi,color:function(){return 'text-red';}},{label:'Rupturas A',key:'rupturaA',fmt:NUM,color:function(v){return v>0?'text-red':'text-muted';}}]);
+  }
+  html+='<div class="toolbar"><input class="search-input" placeholder="Buscar..." value="'+srch+'" onkeyup="App.filterPerdaSearch(this.value)">';
+  if(pe.hasCategorias) html+=renderCatFilterPills(pe.categorias,fC,'filterPerdaCat');
+  html+='<button class="btn-export" onclick="App.openExport()"><i class="ti ti-download"></i> Excel</button><button class="btn-export btn-pdf" onclick="App.exportPDF(\'perda\')"><i class="ti ti-file-text"></i> PDF</button></div>';
+  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'ABC fat.',align:'text-center',render:function(r){return '<span class="badge badge-'+r.abcFat.toLowerCase()+'">'+r.abcFat+'</span>';}},{label:'ABC lucro',align:'text-center',render:function(r){return '<span class="badge badge-'+r.abcLucro.toLowerCase()+'">'+r.abcLucro+'</span>';}},{label:'Venda méd/dia',field:'vendaMediaDia',align:'text-right'},{label:'Fat. méd/dia',align:'text-right',render:function(r){return BRL(r.fatMediaDia);}},{label:'Perda fat./dia',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaFatDia)+'</span>';}},{label:'Perda lucro/dia',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaLucroDia)+'</span>';}}];
+  html+=renderTable(p,th,filtered,page||1,100,{rowClass:function(r){return r.abcFat==='A'?'row-a':(r.abcFat==='B'?'row-b':'');}});
+  html+='<div class="note"><i class="ti ti-info-circle"></i><span>Premissa: a venda média dos últimos 90 dias representa a demanda normal. Valores projetados são estimativas.</span></div>';
+  p.innerHTML=html; renderFns['panel-perda']=renderPerda;
+}
+
+/* ===== FILTER HANDLERS ===== */
+window.App = {
+  filterCritica:function(v){$('panel-critica').dataset.search=v;renderCritica(1);},
+  filterCriticaStatus:function(v){$('panel-critica').dataset.filterStatus=v;renderCritica(1);},
+  filterCriticaCat:function(v){$('panel-critica').dataset.filterCat=v;renderCritica(1);},
+  filterRupturaSearch:function(v){$('panel-ruptura').dataset.search=v;renderRuptura(1);},
+  filterRupturaAbc:function(v){$('panel-ruptura').dataset.filterAbc=v;renderRuptura(1);},
+  filterRupturaCat:function(v){$('panel-ruptura').dataset.filterCat=v;renderRuptura(1);},
+  filterDiasSearch:function(v){$('panel-dias').dataset.search=v;renderDias(1);},
+  filterDiasFaixa:function(v){$('panel-dias').dataset.filterFaixa=v;renderDias(1);},
+  filterDiasCat:function(v){$('panel-dias').dataset.filterCat=v;renderDias(1);},
+  filterAbcSearch:function(v){$('panel-abc').dataset.search=v;renderABC(1);},
+  filterAbcCat:function(v){$('panel-abc').dataset.filterCat=v;renderABC(1);},
+  filterPerdaSearch:function(v){$('panel-perda').dataset.search=v;renderPerda(1);},
+  filterPerdaCat:function(v){$('panel-perda').dataset.filterCat=v;renderPerda(1);},
+  openExport:function(){$('exportModal').classList.add('active');},
+  exportPDF:function(type){Export.generatePDF(type,State.results,State.processDate,LOGO);}
+};
+
+$('btnExportConfirm').addEventListener('click',function(){var sel={criticaResumo:$('exp-critica-resumo').checked,criticaDetalhe:$('exp-critica-detalhe').checked,ruptura:$('exp-ruptura').checked,dias:$('exp-dias').checked,abc:$('exp-abc').checked,perda:$('exp-perda').checked};Export.generateExcel(State.results,sel,State.processDate);$('exportModal').classList.remove('active');});
+$('btnExportCancel').addEventListener('click',function(){$('exportModal').classList.remove('active');});
+})();
