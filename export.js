@@ -10,13 +10,21 @@ var Export = (function(){
   function headerStyle(){return{font:{bold:true,color:{rgb:FC.white},sz:10,name:'Arial'},fill:{fgColor:{rgb:FC.navy}},alignment:{horizontal:'center',vertical:'center'},border:{bottom:{style:'thin',color:{rgb:FC.border}}}}}
   function bodyStyle(align){return{font:{name:'Arial',sz:10},alignment:{horizontal:align||'left'},border:{bottom:{style:'thin',color:{rgb:'F0F0F0'}}}}}
 
-  function addSheet(wb, name, headers, rows, colWidths){
-    var ws = XLSX.utils.aoa_to_sheet([headers].concat(rows));
+  function addSheet(wb, name, headers, rows, colWidths, infoRows){
+    var allData = [];
+    if(infoRows && infoRows.length) allData = allData.concat(infoRows).concat([[]]);
+    if(headers && headers.length) allData.push(headers);
+    allData = allData.concat(rows);
+    var ws = XLSX.utils.aoa_to_sheet(allData);
     if(colWidths) ws['!cols'] = colWidths.map(function(w){return{wch:w}});
     XLSX.utils.book_append_sheet(wb, ws, name);
   }
+  function makeInfoRows(title, info, processDate){
+    return [['FORMULA CODE — '+title],['Cliente: '+(info.cliente||'—')+' | Unidade: '+(info.unidade||'—')+' | Data do inventário: '+(info.dataInventario||'—')],['Processado em '+processDate]];
+  }
 
-  function generateExcel(data, selected, processDate){
+  function generateExcel(data, selected, processDate, info){
+    info = info || {};
     var wb = XLSX.utils.book_new();
     if(selected.criticaResumo && data.critica){
       var c = data.critica;
@@ -33,7 +41,7 @@ var Export = (function(){
       var rCat = c.categorias.map(function(cat){
         return [cat.nome, cat.total, PCT(cat.acuracidade), BRLi(cat.faltaVal), BRLi(cat.sobraVal), BRLi(cat.saldo)];
       });
-      var allRows = [['FORMULA CODE — CRÍTICA DO INVENTÁRIO'],['Processado em '+processDate],[]];
+      var allRows = [['FORMULA CODE — CRÍTICA DO INVENTÁRIO'],['Cliente: '+(info.cliente||'—')+' | Unidade: '+(info.unidade||'—')+' | Data do inventário: '+(info.dataInventario||'—')],['Processado em '+processDate],[]];
       allRows.push(['RESUMO GERAL']);
       rSum.forEach(function(r){allRows.push(r)});
       allRows.push([]);
@@ -47,61 +55,65 @@ var Export = (function(){
       var rd = data.critica.items.map(function(i){
         return [i.sku, i.descricao, i.categoria, i.qtdSistema, i.qtdContada, i.difQtd, i.custoUnit, i.difValor, i.status];
       });
-      addSheet(wb, 'Crítica - Detalhado', hd, rd, [14,24,16,12,12,10,12,12,10]);
+      addSheet(wb, 'Crítica - Detalhado', hd, rd, [14,24,16,12,12,10,12,12,10], makeInfoRows('CRÍTICA — DETALHADO',info,processDate));
     }
     if(selected.ruptura && data.ruptura){
       var hr = ['SKU','Descrição','Categoria','ABC Fat.','ABC Lucro','Qtd Depósito','Qtd Loja','Venda Méd/Dia','Fat. Méd/Dia'];
       var rr = data.ruptura.items.map(function(i){
         return [i.sku,i.descricao,i.categoria,i.abc_valorVendido90||'C',i.abc_lucro90||'C',i.deposito,i.loja,Engine.round2(i.vendaMediaDia||0),BRL(i.fatMediaDia||0)];
       });
-      addSheet(wb, 'Ruptura', hr, rr, [14,24,16,10,10,12,10,14,14]);
+      addSheet(wb, 'Ruptura', hr, rr, [14,24,16,10,10,12,10,14,14], makeInfoRows('RUPTURA',info,processDate));
     }
     if(selected.dias && data.dias){
       var hde = ['SKU','Descrição','Categoria','Qtd Estoque','Venda Méd/Dia','Dias Estoque','Cobertura','Valor Estoque','ABC Fat.'];
       var rde = data.dias.items.map(function(i){
         return [i.sku,i.descricao,i.categoria,i.qtdEstoque,Engine.round2(i.vendaMediaDia||0),i.diasEstoque!==null?Engine.round2(i.diasEstoque):'—',i.faixa,BRL(i.valorEstoque),i.abcFat];
       });
-      addSheet(wb, 'Dias de Estoque', hde, rde, [14,24,16,12,14,12,12,14,10]);
+      addSheet(wb, 'Dias de Estoque', hde, rde, [14,24,16,12,14,12,12,14,10], makeInfoRows('DIAS DE ESTOQUE',info,processDate));
     }
     if(selected.abc && data.abc){
       var ha = ['SKU','Descrição','Categoria','ABC Fat.','ABC Lucro','Qtd Estoque','Custo Unit.','Valor Investido','Fat. 90 dias','Lucro 90 dias'];
       var ra = data.abc.items.map(function(i){
         return [i.sku,i.descricao,i.categoria,i.abcFat,i.abcLucro,i.qtdEstoque,BRL(i.custoUnit),BRL(i.valorInvestido),BRL(i.fat90),BRL(i.lucro90)];
       });
-      addSheet(wb, 'Investimento ABC', ha, ra, [14,24,16,10,10,12,12,14,14,14]);
+      addSheet(wb, 'Investimento ABC', ha, ra, [14,24,16,10,10,12,12,14,14,14], makeInfoRows('INVESTIMENTO ABC',info,processDate));
     }
     if(selected.perda && data.perda){
       var hp = ['SKU','Descrição','Categoria','ABC Fat.','ABC Lucro','Qtd Depósito','Venda Méd/Dia','Fat. Méd/Dia','Lucro Méd/Dia','Perda Fat./Dia','Perda Lucro/Dia'];
       var rp = data.perda.items.map(function(i){
         return [i.sku,i.descricao,i.categoria,i.abcFat,i.abcLucro,i.qtdDeposito,i.vendaMediaDia,BRL(i.fatMediaDia),BRL(i.lucroMediaDia),BRL(i.perdaFatDia),BRL(i.perdaLucroDia)];
       });
-      addSheet(wb, 'Projeção de Perda', hp, rp, [14,24,16,10,10,12,14,14,14,14,14]);
+      addSheet(wb, 'Projeção de Perda', hp, rp, [14,24,16,10,10,12,14,14,14,14,14], makeInfoRows('PROJEÇÃO DE PERDA',info,processDate));
     }
     var out = XLSX.write(wb, {bookType:'xlsx',type:'array'});
     var blob = new Blob([out], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'auditoria_estoque_'+processDate.replace(/[\/ :]/g,'_')+'.xlsx';
+    var fname = 'auditoria_'+(info.cliente||'').replace(/[^a-zA-Z0-9]/g,'_')+'_'+(info.unidade||'').replace(/[^a-zA-Z0-9]/g,'_')+'_'+(info.dataInventario||'').replace(/\//g,'-')+'.xlsx';
+    a.download = fname;
     a.click();
     URL.revokeObjectURL(url);
   }
 
   /* ========== PDF ========== */
-  function generatePDF(reportType, data, processDate, logoDataUrl){
+  function generatePDF(reportType, data, processDate, logoDataUrl, info){
+    info = info || {};
     var jsPDF = window.jspdf.jsPDF;
     var doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
     var W = 210, H = 297, M = 15;
     var y = 0;
     function addHeader(){
       doc.setFillColor(11,37,69);
-      doc.rect(0,0,W,18,('F'));
+      doc.rect(0,0,W,22,'F');
       if(logoDataUrl){try{doc.addImage(logoDataUrl,'PNG',M,3,36,12)}catch(e){}}
       doc.setFontSize(9); doc.setTextColor(255,255,255);
-      doc.text('Auditoria de estoque', W-M, 8, {align:'right'});
-      doc.setFontSize(7); doc.setTextColor(180,180,200);
-      doc.text('Processado em '+processDate, W-M, 13, {align:'right'});
-      y = 24;
+      doc.text((info.cliente||'')+' — '+(info.unidade||''), W-M, 7, {align:'right'});
+      doc.setFontSize(7); doc.setTextColor(200,220,255);
+      doc.text('Inventário: '+(info.dataInventario||'—'), W-M, 12, {align:'right'});
+      doc.setTextColor(180,180,200);
+      doc.text('Processado em '+processDate, W-M, 17, {align:'right'});
+      y = 28;
     }
     function addFooter(pg){
       doc.setFontSize(7); doc.setTextColor(150,150,150);
@@ -262,7 +274,8 @@ var Export = (function(){
     y+=4;
     doc.text('Premissa: a venda média dos últimos 90 dias representa a demanda normal. Valores projetados são estimativas.', M, y);
 
-    doc.save('resumo_'+reportType+'_'+processDate.replace(/[\/ :]/g,'_')+'.pdf');
+    var pdfName = 'resumo_'+reportType+'_'+(info.cliente||'').replace(/[^a-zA-Z0-9]/g,'_')+'_'+(info.unidade||'').replace(/[^a-zA-Z0-9]/g,'_')+'_'+(info.dataInventario||'').replace(/\//g,'-')+'.pdf';
+    doc.save(pdfName);
   }
 
   return { generateExcel:generateExcel, generatePDF:generatePDF };

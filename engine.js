@@ -266,5 +266,32 @@ var Engine = (function(){
       categorias:catList, hasCategorias:hasRealCategorias(catList)};
   }
 
-  return {calcCritica:calcCritica, calcRuptura:calcRuptura, calcDiasEstoque:calcDiasEstoque, calcInvestimentoABC:calcInvestimentoABC, calcProjecaoPerda:calcProjecaoPerda, calcABC:calcABC, round2:round2, roundInt:roundInt};
+  /* Helper: constrói lista de itens a partir da contagem quando não há estoque sistema */
+  function buildItemsFromContagem(contagem, cadastro){
+    var skuMap = {};
+    contagem.forEach(function(row){
+      var sku = String(row.sku||'').trim();
+      if(!sku) return;
+      if(!skuMap[sku]) skuMap[sku] = {sku:sku, descricao:row.descricao||'', categoria:row.categoria||'', qtdContada:0, custoUnit:Number(row.custoUnit)||0, qtdSistema:0, difQtd:0, difValor:0, status:'—'};
+      skuMap[sku].qtdContada += (Number(row.qtdContada)||0);
+      if(row.descricao && !skuMap[sku].descricao) skuMap[sku].descricao = row.descricao;
+      if(row.categoria && !skuMap[sku].categoria) skuMap[sku].categoria = row.categoria;
+      if(row.custoUnit && !skuMap[sku].custoUnit) skuMap[sku].custoUnit = Number(row.custoUnit)||0;
+    });
+    if(cadastro && cadastro.length){
+      var cadMap = {};
+      cadastro.forEach(function(r){ cadMap[String(r.sku||'').trim()] = r; });
+      Object.keys(skuMap).forEach(function(sku){
+        var c = cadMap[sku];
+        if(c){
+          if(c.descricao && !skuMap[sku].descricao) skuMap[sku].descricao = c.descricao;
+          if(c.categoria && !skuMap[sku].categoria) skuMap[sku].categoria = c.categoria;
+          if(c.custoUnit && !skuMap[sku].custoUnit) skuMap[sku].custoUnit = Number(c.custoUnit)||0;
+        }
+      });
+    }
+    return Object.keys(skuMap).map(function(k){ return skuMap[k]; });
+  }
+
+  return {calcCritica:calcCritica, calcRuptura:calcRuptura, calcDiasEstoque:calcDiasEstoque, calcInvestimentoABC:calcInvestimentoABC, calcProjecaoPerda:calcProjecaoPerda, calcABC:calcABC, buildItemsFromContagem:buildItemsFromContagem, round2:round2, roundInt:roundInt};
 })();

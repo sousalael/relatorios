@@ -160,7 +160,13 @@ table.data-table tr:hover td{background:#eef6ff}
 .pagination button{padding:4px 12px;border:1px solid var(--fc-border);border-radius:4px;background:var(--fc-card);cursor:pointer;font-size:12px}
 .pagination button:disabled{opacity:.3;cursor:not-allowed}
 .pagination button.active{background:var(--fc-navy);color:#fff;border-color:var(--fc-navy)}
-@media(max-width:768px){.file-slots,.summary-pair{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.loss-cards,.dist-grid{grid-template-columns:repeat(2,1fr)}.header{padding:10px 16px}.body{padding:16px}.tabs{padding:0 12px}}
+.info-fields{margin-bottom:20px}
+.info-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.info-group{display:flex;flex-direction:column}
+.info-label{font-size:12px;font-weight:600;color:var(--fc-navy);margin-bottom:4px}
+.info-input{padding:9px 12px;border:1px solid var(--fc-border);border-radius:6px;font-size:14px;outline:none;background:var(--fc-card);color:var(--fc-text)}
+.info-input:focus{border-color:var(--fc-green)}
+@media(max-width:768px){.info-row{grid-template-columns:1fr}.file-slots,.summary-pair{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}.loss-cards,.dist-grid{grid-template-columns:repeat(2,1fr)}.header{padding:10px 16px}.body{padding:16px}.tabs{padding:0 12px}}
 </style>
 </head>
 <body>
@@ -188,6 +194,13 @@ table.data-table tr:hover td{background:#eef6ff}
         <div class="upload-title">Arraste seus arquivos aqui ou clique para selecionar</div>
         <div class="upload-sub">Excel (.xlsx, .xls), CSV ou TXT — múltiplos arquivos aceitos</div>
         <input type="file" id="fileInput" multiple accept=".xlsx,.xls,.csv,.txt" style="display:none">
+      </div>
+      <div class="info-fields">
+        <div class="info-row">
+          <div class="info-group"><label class="info-label">Cliente <span style="color:var(--fc-red)">*</span></label><input type="text" class="info-input" id="infoCliente" placeholder="Ex: Rede Farma Ltda"></div>
+          <div class="info-group"><label class="info-label">Unidade / Filial <span style="color:var(--fc-red)">*</span></label><input type="text" class="info-input" id="infoUnidade" placeholder="Ex: Loja Centro — Ilhéus"></div>
+          <div class="info-group"><label class="info-label">Data do inventário <span style="color:var(--fc-red)">*</span></label><input type="date" class="info-input" id="infoData"></div>
+        </div>
       </div>
       <div class="file-slots">
         <div class="file-slot" id="slot-estoque"><div class="file-slot-label">Estoque sistema</div><div class="file-slot-name">—</div><div class="file-slot-status pending">Aguardando arquivo</div></div>
