@@ -35,7 +35,6 @@ function sumCritica(c){
   var w=c.categorias.filter(function(x){return x.nome!=='Sem categoria';}).sort(function(a,b){return a.acuracidade-b.acuracidade;});
   var wn=w.slice(0,2).map(function(x){return x.nome+' ('+PCT(x.acuracidade)+')';}).join(' e ');
   var t='A unidade apresentou acuracidade de '+PCT(c.acuracidade);
-  if(c.acuracidade<95)t+=', abaixo do benchmark de 95% para o varejo alimentar';
   t+='. Das '+NUM(c.totalSKUs)+' posições auditadas, '+NUM(c.faltaCount)+' apresentaram faltas totalizando '+BRLi(c.totalFaltas)+', concentradas nas categorias de maior perecibilidade. As sobras somaram '+BRLi(c.totalSobras)+', resultando em saldo líquido negativo de '+BRLi(c.saldoLiquido)+'.';
   if(w.length&&w[0].acuracidade<90)t+=' A categoria '+wn+' merece atenção especial, sugerindo fragilidade no controle de produtos com alta perecibilidade.';
   return t;
@@ -69,16 +68,16 @@ function sumABC(a){
 }
 function metABC(){return'A classificação ABC ordena todos os SKUs pelo valor acumulado (faturamento ou lucro dos últimos 90 dias). Os itens que representam até 80% do valor acumulado são classificados como curva A, de 80% a 95% como curva B, e os demais como curva C. O valor em estoque de cada item é calculado pela quantidade em estoque multiplicada pelo custo unitário (derivado do CMV quando não informado diretamente).';}
 function sumPerda(p){
-  var t='As rupturas identificadas geram uma perda estimada de '+BRLi(p.totalPerdaFat)+'/dia em faturamento e '+BRLi(p.totalPerdaLucro)+'/dia em lucro bruto. Projetando 30 dias, o impacto mensal é de '+BRLi(p.perdaMensal)+' em receita não realizada.';
+  var t='Foram identificados '+NUM(p.totalSKUs)+' itens com venda nos últimos 90 dias que não constam na contagem física, gerando uma perda estimada de '+BRLi(p.totalPerdaFat)+'/dia em faturamento e '+BRLi(p.totalPerdaLucro)+'/dia em lucro bruto. Projetando 30 dias, o impacto mensal é de '+BRLi(p.perdaMensal)+' em receita não realizada.';
   if(p.classA.count>0){
     t+=' Os itens curva A respondem por '+PCT(p.classA.pct)+' dessa perda';
-    var topP=p.items.filter(function(i){return i.abcFat==='A';}).sort(function(a,b){return b.perdaFatDia-a.perdaFatDia;}).slice(0,2);
+    var topP=p.items.filter(function(i){return i.abcFat==='A';}).slice(0,2);
     if(topP.length>=2)t+=', com destaque para '+topP[0].descricao+' e '+topP[1].descricao+' entre os maiores ofensores';
-    t+='. A reposição imediata desses itens no salão é a ação de maior retorno financeiro no curto prazo.';
+    t+='. A regularização do abastecimento desses itens é a ação de maior retorno financeiro no curto prazo.';
   }
   return t;
 }
-function metPerda(){return'Para cada item em ruptura (presente no depósito, ausente na loja), projeta-se a venda perdida com base na demanda média diária dos últimos 90 dias. A perda diária de faturamento é a venda média diária em R$; a perda de lucro é o lucro médio diário. A projeção mensal multiplica esses valores por 30 dias. A premissa é que a demanda média dos últimos 90 dias representa o padrão normal de consumo.';}
+function metPerda(){return'Para cada item com venda registrada nos últimos 90 dias e que não consta na contagem física (quantidade contada igual a zero ou ausente), projeta-se a venda perdida com base na demanda média diária. A perda diária de faturamento é a venda média diária em R$; a perda de lucro é o lucro médio diário. A projeção mensal multiplica esses valores por 30 dias. A premissa é que a demanda média dos últimos 90 dias representa o padrão normal de consumo.';}
 
 /* ===== GERAR EXCEL ===== */
 function generateExcel(data,sel,pd,info){
@@ -109,7 +108,7 @@ function generateExcel(data,sel,pd,info){
 
   if(sel.abc&&data.abc){var wsA={},rw=0;rw=addBH(wsA,rw,info,pd,10);rw=addDT(wsA,rw,['SKU','Descrição','Categoria','ABC Fat.','ABC Lucro','Qtd Estoque','Custo Unit.','Valor Estoque','Fat. 90 dias','Lucro 90 dias'],data.abc.items.map(function(i){return[i.sku,i.descricao,i.categoria||'',i.abcFat,i.abcLucro,i.qtdEstoque,BRL(i.custoUnit),BRL(i.valorInvestido),BRL(i.fat90),BRL(i.lucro90)];}),{0:'left',1:'left',2:'left',3:'center',4:'center',5:'right',6:'right',7:'right',8:'right',9:'right'});wsA['!cols']=[{wch:14},{wch:32},{wch:18},{wch:10},{wch:10},{wch:12},{wch:14},{wch:16},{wch:16},{wch:16}];wsA['!rows']=[{hpt:28},{hpt:20}];XLSX.utils.book_append_sheet(wb,wsA,'Investimento ABC');}
 
-  if(sel.perda&&data.perda){var wsP={},rw=0;rw=addBH(wsP,rw,info,pd,11);rw=addDT(wsP,rw,['SKU','Descrição','Categoria','ABC Fat.','ABC Lucro','Qtd Depósito','Venda Méd/Dia','Perda Fat./Dia','Perda Lucro/Dia','Perda Fat./Mês','Perda Lucro/Mês'],data.perda.items.map(function(i){return[i.sku,i.descricao,i.categoria||'',i.abcFat,i.abcLucro||'C',i.qtdDeposito,R2(i.vendaMediaDia),BRL(i.perdaFatDia),BRL(i.perdaLucroDia),BRL(i.perdaFatMes),BRL(i.perdaLucroMes)];}),{0:'left',1:'left',2:'left',3:'center',4:'center',5:'right',6:'right',7:'right',8:'right',9:'right',10:'right'});wsP['!cols']=[{wch:14},{wch:32},{wch:18},{wch:10},{wch:10},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14}];wsP['!rows']=[{hpt:28},{hpt:20}];XLSX.utils.book_append_sheet(wb,wsP,'Projeção de Perda');}
+  if(sel.perda&&data.perda){var wsP={},rw=0;rw=addBH(wsP,rw,info,pd,11);rw=addDT(wsP,rw,['SKU','Descrição','Categoria','ABC Fat.','ABC Lucro','Venda 90d','Venda Méd/Dia','Perda Fat./Dia','Perda Lucro/Dia','Perda Fat./Mês','Perda Lucro/Mês'],data.perda.items.map(function(i){return[i.sku,i.descricao,i.categoria||'',i.abcFat,i.abcLucro||'C',R2(i.qtdVendida||0),R2(i.vendaMediaDia),BRL(i.perdaFatDia),BRL(i.perdaLucroDia),BRL(i.perdaFatMes),BRL(i.perdaLucroMes)];}),{0:'left',1:'left',2:'left',3:'center',4:'center',5:'right',6:'right',7:'right',8:'right',9:'right',10:'right'});wsP['!cols']=[{wch:14},{wch:32},{wch:18},{wch:10},{wch:10},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14}];wsP['!rows']=[{hpt:28},{hpt:20}];XLSX.utils.book_append_sheet(wb,wsP,'Projeção de Perda');}
 
   var out=XLSX.write(wb,{bookType:'xlsx',type:'array'});var blob=new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='auditoria_'+(info.cliente||'').replace(/[^a-zA-Z0-9]/g,'_')+'_'+(info.unidade||'').replace(/[^a-zA-Z0-9]/g,'_')+'_'+(info.dataInventario||'').replace(/\//g,'-')+'.xlsx';a.click();URL.revokeObjectURL(url);
 }

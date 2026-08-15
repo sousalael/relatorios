@@ -330,8 +330,8 @@ function processAll(){
             State.results.abc=Engine.calcInvestimentoABC(itemsBase,State.rawData.vendas,custoMap);
             avail.abc=true;
           }
-          if(State.results.ruptura&&hasVendas){
-            State.results.perda=Engine.calcProjecaoPerda(State.results.ruptura);
+          if(hasVendas&&(hasContagem||hasEstoque)){
+            State.results.perda=Engine.calcProjecaoPerda(State.rawData.vendas,State.rawData.contagem.length?State.rawData.contagem:State.rawData.estoque,State.rawData.cadastro);
             avail.perda=true;
           }
           fill.style.width='100%';
@@ -544,7 +544,7 @@ function renderPerda(page){
   html+='<span class="pill '+(fA==='all'?'active':'')+'" onclick="App.filterPerdaAbc(\'all\')">Todos</span><span class="pill '+(fA==='A'?'active':'')+'" onclick="App.filterPerdaAbc(\'A\')">Curva A</span><span class="pill '+(fA==='B'?'active':'')+'" onclick="App.filterPerdaAbc(\'B\')">Curva B</span><span class="pill '+(fA==='C'?'active':'')+'" onclick="App.filterPerdaAbc(\'C\')">Curva C</span>';
   if(pe.hasCategorias) html+=renderCatFilterPills(pe.categorias,fC,'filterPerdaCat');
   html+='<button class="btn-export" onclick="App.openExport()"><i class="ti ti-download"></i> Excel</button><button class="btn-export btn-pdf" onclick="App.exportPDF(\'perda\')"><i class="ti ti-file-text"></i> PDF</button></div>';
-  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'ABC fat.',align:'text-center',render:function(r){return '<span class="badge badge-'+r.abcFat.toLowerCase()+'">'+r.abcFat+'</span>';}},{label:'Perda fat./dia',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaFatDia)+'</span>';}},{label:'Perda lucro/dia',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaLucroDia)+'</span>';}},{label:'Perda fat./mês',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaFatMes)+'</span>';}},{label:'Perda lucro/mês',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaLucroMes)+'</span>';}}];
+  var th=[{label:'SKU',field:'sku'},{label:'Descrição',field:'descricao'},{label:'Categoria',field:'categoria'},{label:'ABC fat.',align:'text-center',render:function(r){return '<span class="badge badge-'+r.abcFat.toLowerCase()+'">'+r.abcFat+'</span>';}},{label:'Venda méd/dia',align:'text-right',render:function(r){return NUMBR(r.vendaMediaDia);}},{label:'Perda fat./dia',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaFatDia)+'</span>';}},{label:'Perda lucro/dia',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaLucroDia)+'</span>';}},{label:'Perda fat./mês',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaFatMes)+'</span>';}},{label:'Perda lucro/mês',align:'text-right',render:function(r){return '<span class="text-red">'+BRL(r.perdaLucroMes)+'</span>';}}];
   html+=renderTable(p,th,filtered,page||1,100,{rowClass:function(r){return r.abcFat==='A'?'row-a':(r.abcFat==='B'?'row-b':'');}});
   html+='<div class="note"><i class="ti ti-info-circle"></i><span>Premissa: a venda média dos últimos 90 dias representa a demanda normal. Valores projetados são estimativas.</span></div>';
   p.innerHTML=html; renderFns['panel-perda']=renderPerda;

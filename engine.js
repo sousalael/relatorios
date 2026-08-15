@@ -279,16 +279,61 @@ var Engine = (function(){
   }
 
   /* ========== 5. PROJECAO DE PERDA ========== */
-  function calcProjecaoPerda(ruptura){
-    var items = ruptura.items.map(function(it){
-      return {sku:it.sku, descricao:it.descricao, categoria:it.categoria,
-        abcFat:it.abc_valorVendido90||'C', abcLucro:it.abc_lucro90||'C',
-        qtdDeposito:it.deposito, vendaMediaDia:round2(it.vendaMediaDia||0),
-        fatMediaDia:round2(it.fatMediaDia||0), lucroMediaDia:round2(it.lucroMediaDia||0),
-        perdaFatDia:round2(it.fatMediaDia||0), perdaLucroDia:round2(it.lucroMediaDia||0),
-        perdaFatMes:round2((it.fatMediaDia||0)*30), perdaLucroMes:round2((it.lucroMediaDia||0)*30)};
+  function calcProjecaoPerda(vendas90, contagem, cadastro){
+    /* Mapa de contagem: SKU → qtd total contada */
+    var contagemMap = {};
+    contagem.forEach(function(row){
+      var sku = String(row.sku||'').trim();
+      if(!sku) return;
+      contagemMap[sku] = (contagemMap[sku]||0) + (Number(row.qtdContada)||0);
     });
-    // Sort: maior perda de faturamento primeiro
+    /* Mapa de categorias do cadastro */
+    var catMap = {};
+    if(cadastro && cadastro.length){
+      cadastro.forEach(function(r){
+        var sku = String(r.sku||'').trim();
+        if(sku && r.categoria) catMap[sku] = r.categoria;
+      });
+    }
+    /* Agrupar vendas por SKU */
+    var vendasMap = {};
+    vendas90.forEach(function(r){
+      var sku = String(r.sku||'').trim();
+      if(!sku) return;
+      if(!vendasMap[sku]) vendasMap[sku] = {sku:sku, descricao:r.descricao||'', categoria:r.categoria||catMap[sku]||'',
+        qtdVendida:0, valorVendido:0, custoVendido:0, lucro:0};
+      vendasMap[sku].qtdVendida += (Number(r.qtdVendida)||0);
+      vendasMap[sku].valorVendido += (Number(r.valorVendido)||0);
+      var cv = Number(r.custoVendido)||0;
+      var lc = Number(r.lucro)||0;
+      vendasMap[sku].custoVendido += cv;
+      vendasMap[sku].lucro += lc;
+      if(r.descricao && !vendasMap[sku].descricao) vendasMap[sku].descricao = r.descricao;
+      if(r.categoria && !vendasMap[sku].categoria) vendasMap[sku].categoria = r.categoria;
+    });
+    /* Filtrar: SKUs vendidos que NÃO constam na contagem (ou qtd contada = 0) */
+    var items = [];
+    Object.keys(vendasMap).forEach(function(sku){
+      var v = vendasMap[sku];
+      var qtdContada = contagemMap[sku] || 0;
+      if(qtdContada > 0) return; /* tem estoque físico → não é perda */
+      if(v.qtdVendida <= 0) return; /* sem venda → não projeta */
+      var vendaMediaDia = round2(v.qtdVendida / 90);
+      var fatMediaDia = round2(v.valorVendido / 90);
+      var lucroMediaDia = round2(v.lucro / 90);
+      items.push({sku:sku, descricao:v.descricao, categoria:v.categoria || catMap[sku] || '',
+        abcFat:'C', abcLucro:'C',
+        qtdVendida:v.qtdVendida, vendaMediaDia:vendaMediaDia,
+        fatMediaDia:fatMediaDia, lucroMediaDia:lucroMediaDia,
+        perdaFatDia:fatMediaDia, perdaLucroDia:lucroMediaDia,
+        perdaFatMes:round2(fatMediaDia*30), perdaLucroMes:round2(lucroMediaDia*30)});
+    });
+    /* Classificar ABC por faturamento e lucro */
+    items = calcABC(items, 'perdaFatDia');
+    items.forEach(function(it){ it.abcFat = it.abc_perdaFatDia || 'C'; });
+    items = calcABC(items, 'perdaLucroDia');
+    items.forEach(function(it){ it.abcLucro = it.abc_perdaLucroDia || 'C'; });
+    /* Ordenar por maior perda */
     items.sort(function(a,b){ return (b.perdaFatDia||0)-(a.perdaFatDia||0); });
     var totalPerdaFat=round2(items.reduce(function(s,i){return s+i.perdaFatDia},0));
     var totalPerdaLucro=round2(items.reduce(function(s,i){return s+i.perdaLucroDia},0));
