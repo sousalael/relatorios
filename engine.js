@@ -118,7 +118,8 @@ var Engine = (function(){
   }
 
   /* ========== 2. RUPTURA ========== */
-  function calcRuptura(contagem, vendas90, cadastro){
+  function calcRuptura(contagem, vendas90, cadastro, diasVenda){
+    diasVenda = diasVenda || 90;
     var catMap={},descMap={};
     if(cadastro&&cadastro.length){cadastro.forEach(function(r){var s=String(r.sku||'').trim();if(s&&r.categoria)catMap[s]=r.categoria;if(s&&r.descricao)descMap[s]=r.descricao;});}
     if(vendas90&&vendas90.length){vendas90.forEach(function(r){var s=String(r.sku||'').trim();if(s&&r.categoria&&!catMap[s])catMap[s]=r.categoria;});}
@@ -146,9 +147,9 @@ var Engine = (function(){
       var it = skuLocais[sku];
       if(it.deposito > 0){
         var v = vendasMap[sku]||{};
-        it.vendaMediaDia = safeDiv(v.qtdVendida,90);
-        it.fatMediaDia = safeDiv(v.valorVendido,90);
-        it.lucroMediaDia = safeDiv(v.lucro||(v.valorVendido-v.custoVendido),90);
+        it.vendaMediaDia = safeDiv(v.qtdVendida,diasVenda);
+        it.fatMediaDia = safeDiv(v.valorVendido,diasVenda);
+        it.lucroMediaDia = safeDiv(v.lucro||(v.valorVendido-v.custoVendido),diasVenda);
         it.valorVendido90 = v.valorVendido||0;
         it.lucro90 = v.lucro||((v.valorVendido||0)-(v.custoVendido||0));
         if(!it.categoria) it.categoria = catMap[sku] || v.categoria || '';
@@ -183,7 +184,8 @@ var Engine = (function(){
   }
 
   /* ========== 3. DIAS DE ESTOQUE ========== */
-  function calcDiasEstoque(critica, vendas90, custoMap){
+  function calcDiasEstoque(critica, vendas90, custoMap, diasVenda){
+    diasVenda = diasVenda || 90;
     custoMap = custoMap || {};
     var vendasMap = {};
     if(vendas90 && vendas90.length){
@@ -194,7 +196,7 @@ var Engine = (function(){
     }
     var items = critica.items.map(function(it){
       var v = vendasMap[it.sku]||{};
-      var vendaMediaDia = safeDiv(v.qtdVendida,90);
+      var vendaMediaDia = safeDiv(v.qtdVendida,diasVenda);
       var dias = vendaMediaDia ? roundInt(it.qtdContada/vendaMediaDia) : null;
       var custo = resolveCusto(it, custoMap);
       var faixa = dias===null?'Sem giro':(dias<=2?'Ruptura':(dias<=5?'Alto risco':(dias<=15?'Médio risco':(dias<=30?'Cobertura ideal':'Excesso de cobertura'))));
@@ -238,7 +240,8 @@ var Engine = (function(){
   }
 
   /* ========== 4. INVESTIMENTO ABC ========== */
-  function calcInvestimentoABC(critica, vendas90, custoMap){
+  function calcInvestimentoABC(critica, vendas90, custoMap, diasVenda){
+    diasVenda = diasVenda || 90;
     custoMap = custoMap || {};
     var vendasMap = {};
     vendas90.forEach(function(r){
@@ -279,7 +282,8 @@ var Engine = (function(){
   }
 
   /* ========== 5. PROJECAO DE PERDA ========== */
-  function calcProjecaoPerda(vendas90, contagem, cadastro){
+  function calcProjecaoPerda(vendas90, contagem, cadastro, diasVenda){
+    diasVenda = diasVenda || 90;
     /* Mapa de contagem: SKU → qtd total contada */
     var contagemMap = {};
     contagem.forEach(function(row){
@@ -318,9 +322,9 @@ var Engine = (function(){
       var qtdContada = contagemMap[sku] || 0;
       if(qtdContada > 0) return; /* tem estoque físico → não é perda */
       if(v.qtdVendida <= 0) return; /* sem venda → não projeta */
-      var vendaMediaDia = round2(v.qtdVendida / 90);
-      var fatMediaDia = round2(v.valorVendido / 90);
-      var lucroMediaDia = round2(v.lucro / 90);
+      var vendaMediaDia = round2(v.qtdVendida / diasVenda);
+      var fatMediaDia = round2(v.valorVendido / diasVenda);
+      var lucroMediaDia = round2(v.lucro / diasVenda);
       items.push({sku:sku, descricao:v.descricao, categoria:v.categoria || catMap[sku] || '',
         abcFat:'C', abcLucro:'C',
         qtdVendida:v.qtdVendida, vendaMediaDia:vendaMediaDia,

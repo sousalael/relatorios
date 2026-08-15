@@ -8,7 +8,7 @@ var LOGO='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALAAAAAsCAYAAADFEzJmAAAj
 document.getElementById('logo').src=LOGO;
 
 /* ===== STATE ===== */
-var State = {files:{estoque:null,contagem:null,vendas:null,cadastro:null,exclusoes:null},mappings:{},rawData:{estoque:[],contagem:[],vendas:[],cadastro:[],exclusoes:[]},results:{},processDate:'',charts:{},info:{cliente:'',unidade:'',dataInventario:''}};
+var State = {files:{estoque:null,contagem:null,vendas:null,cadastro:null,exclusoes:null},mappings:{},rawData:{estoque:[],contagem:[],vendas:[],cadastro:[],exclusoes:[]},results:{},processDate:'',charts:{},info:{cliente:'',unidade:'',dataInventario:'',diasVenda:90}};
 
 /* ===== FUZZY MAPPING — com contexto de tipo de arquivo ===== */
 var SYNONYMS = {
@@ -274,7 +274,7 @@ function processAll(){
   State.info.unidade=$('infoUnidade').value.trim();
   var dVal=$('infoData').value;
   State.info.dataInventario=dVal?dVal.split('-').reverse().join('/'):'';
-  var bar=$('progressBar');bar.style.display='block';var fill=$('progressFill');fill.style.width='10%';
+  State.info.diasVenda=parseInt($('infoDiasVenda').value)||90;  var bar=$('progressBar');bar.style.display='block';var fill=$('progressFill');fill.style.width='10%';
   State.processDate=new Date().toLocaleString('pt-BR');
   $('headerDate').innerHTML=State.info.cliente+' — '+State.info.unidade+'<br>Inventário: '+State.info.dataInventario+' | Processado em '+State.processDate;
 
@@ -315,23 +315,23 @@ function processAll(){
     setTimeout(function(){
       fill.style.width='50%';
       if(hasContagem){
-        State.results.ruptura=Engine.calcRuptura(State.rawData.contagem,hasVendas?State.rawData.vendas:[],State.rawData.cadastro);
+        State.results.ruptura=Engine.calcRuptura(State.rawData.contagem,hasVendas?State.rawData.vendas:[],State.rawData.cadastro,State.info.diasVenda);
         avail.ruptura=true;
       }
       fill.style.width='65%';
       setTimeout(function(){
         if(itemsBase&&hasVendas){
-          State.results.dias=Engine.calcDiasEstoque(itemsBase,State.rawData.vendas,custoMap);
+          State.results.dias=Engine.calcDiasEstoque(itemsBase,State.rawData.vendas,custoMap,State.info.diasVenda);
           avail.dias=true;
         }
         fill.style.width='75%';
         setTimeout(function(){
           if(itemsBase&&hasVendas){
-            State.results.abc=Engine.calcInvestimentoABC(itemsBase,State.rawData.vendas,custoMap);
+            State.results.abc=Engine.calcInvestimentoABC(itemsBase,State.rawData.vendas,custoMap,State.info.diasVenda);
             avail.abc=true;
           }
           if(hasVendas&&(hasContagem||hasEstoque)){
-            State.results.perda=Engine.calcProjecaoPerda(State.rawData.vendas,State.rawData.contagem.length?State.rawData.contagem:State.rawData.estoque,State.rawData.cadastro);
+            State.results.perda=Engine.calcProjecaoPerda(State.rawData.vendas,State.rawData.contagem.length?State.rawData.contagem:State.rawData.estoque,State.rawData.cadastro,State.info.diasVenda);
             avail.perda=true;
           }
           fill.style.width='100%';

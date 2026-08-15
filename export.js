@@ -143,11 +143,23 @@ function generatePDF(rt,data,pd,logo,info){
     });
   }
   else if(rt==='ruptura'){
-    var r=data.ruptura;ttl('Ruptura — Resumo executivo');
-    sec('Análise');bloco(sumRuptura(r));sec('Metodologia');bloco(metRuptura());
+    var r=data.ruptura;var temVendas=r.items.some(function(i){return i.vendaMediaDia>0;});
+    ttl('Ruptura — Resumo executivo');
+    sec('Análise');bloco(temVendas?sumRuptura(r):'Foram identificados '+NUM(r.totalRupturas)+' itens em ruptura (presentes no depósito mas ausentes no salão de vendas). Sem dados de vendas disponíveis para análise de impacto financeiro.');
+    sec('Metodologia');bloco(metRuptura());
     sec('Indicadores gerais');kpi(['TAXA DE RUPTURA','SKUS EM RUPTURA','RUPTURA CURVA A (FAT.)','RUPTURA CURVA A (LUCRO)'],[PCT(r.taxaRuptura),NUM(r.totalRupturas),PCT(r.taxaA),PCT(r.taxaALucro)],[[211,47,47],[51,51,51],[211,47,47],[211,47,47]]);
-    sec('Rupturas curva A — Top 30');var topA=r.items.filter(function(i){return i.abc_valorVendido90==='A';}).slice(0,30);
-    aT(['SKU','Descrição','Categoria','ABC Fat.','Qtd Dep.','Venda Méd/Dia','Fat. Méd/Dia'],topA.map(function(i){return[i.sku,i.descricao,i.categoria||'',i.abc_valorVendido90,i.deposito,R2(i.vendaMediaDia),BRL(i.fatMediaDia||0)];}),{4:{halign:'right'},5:{halign:'right'},6:{halign:'right'}});
+    if(temVendas){
+      sec('Rupturas curva A — Top 30');var topA=r.items.filter(function(i){return i.abc_valorVendido90==='A';}).slice(0,30);
+      aT(['SKU','Descrição','Categoria','ABC Fat.','Qtd Dep.','Venda Méd/Dia','Fat. Méd/Dia'],topA.map(function(i){return[i.sku,i.descricao,i.categoria||'',i.abc_valorVendido90,i.deposito,R2(i.vendaMediaDia),BRL(i.fatMediaDia||0)];}),{4:{halign:'right'},5:{halign:'right'},6:{halign:'right'}});
+    }else{
+      /* Sem vendas: listar por categoria com qtd depósito */
+      var catMap={};r.items.forEach(function(i){var c=i.categoria||'Sem categoria';if(!catMap[c])catMap[c]=[];catMap[c].push(i);});
+      Object.keys(catMap).sort().forEach(function(cat){
+        var itens=catMap[cat].sort(function(a,b){return b.deposito-a.deposito;});
+        sec(cat+' — '+itens.length+' itens em ruptura');
+        aT(['SKU','Descrição','Qtd Depósito'],itens.map(function(i){return[i.sku,i.descricao,i.deposito];}),{2:{halign:'right'}});
+      });
+    }
   }
   else if(rt==='dias'){
     var d=data.dias,fv=fxV(d.items);ttl('Dias de estoque — Resumo executivo');
