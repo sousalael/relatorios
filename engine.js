@@ -184,27 +184,57 @@ var Engine = (function(){
   }
 
   /* ========== 3. DIAS DE ESTOQUE ========== */
-  function calcDiasEstoque(critica, vendas90, custoMap, diasVenda){
+  function calcDiasEstoque(critica, vendas90, custoMap, diasVenda, cadastro){
     diasVenda = diasVenda || 90;
     custoMap = custoMap || {};
     var vendasMap = {};
     if(vendas90 && vendas90.length){
       vendas90.forEach(function(r){
         var sku=String(r.sku||'').trim();
-        vendasMap[sku]={qtdVendida:Number(r.qtdVendida)||0, valorVendido:Number(r.valorVendido)||0, custoVendido:Number(r.custoVendido)||0};
+        if(!vendasMap[sku]) vendasMap[sku]={qtdVendida:0, valorVendido:0, custoVendido:0, descricao:'', categoria:''};
+        vendasMap[sku].qtdVendida += (Number(r.qtdVendida)||0);
+        vendasMap[sku].valorVendido += (Number(r.valorVendido)||0);
+        vendasMap[sku].custoVendido += (Number(r.custoVendido)||0);
+        if(r.descricao && !vendasMap[sku].descricao) vendasMap[sku].descricao = r.descricao;
+        if(r.categoria && !vendasMap[sku].categoria) vendasMap[sku].categoria = r.categoria;
       });
     }
-    var items = critica.items.map(function(it){
+    /* Mapa de categorias do cadastro */
+    var catMap = {};
+    if(cadastro && cadastro.length){
+      cadastro.forEach(function(r){
+        var sku=String(r.sku||'').trim();
+        if(sku && r.categoria) catMap[sku] = r.categoria;
+      });
+    }
+    /* Universo base: itens da crítica/contagem COM MOVIMENTAÇÃO */
+    var skuSet = {};
+    var items = critica.items.filter(function(it){
+      /* Só inclui se teve movimentação real */
+      if((it.qtdContada||0)>0 || (it.qtdSistema||0)>0) return true;
+      var v=vendasMap[it.sku];
+      if(v && v.qtdVendida>0) return true;
+      return false;
+    }).map(function(it){
+      skuSet[it.sku] = true;
       var v = vendasMap[it.sku]||{};
       var vendaMediaDia = safeDiv(v.qtdVendida,diasVenda);
       var dias = vendaMediaDia ? roundInt(it.qtdContada/vendaMediaDia) : null;
       var custo = resolveCusto(it, custoMap);
       var faixa = dias===null?'Sem giro':(dias<=2?'Ruptura':(dias<=5?'Alto risco':(dias<=15?'Médio risco':(dias<=30?'Cobertura ideal':'Excesso de cobertura'))));
-      return {sku:it.sku, descricao:it.descricao, categoria:it.categoria, qtdEstoque:it.qtdContada, vendaMediaDia:vendaMediaDia, diasEstoque:dias, faixa:faixa, valorEstoque:round2(it.qtdContada*custo), custoUnit:custo, valorVendido90:v.valorVendido||0};
+      return {sku:it.sku, descricao:it.descricao, categoria:it.categoria||catMap[it.sku]||'', qtdEstoque:it.qtdContada, vendaMediaDia:vendaMediaDia, diasEstoque:dias, faixa:faixa, valorEstoque:round2(it.qtdContada*custo), custoUnit:custo, valorVendido90:v.valorVendido||0};
+    });
+    /* Acrescentar SKUs vendidos que não estão na crítica/contagem */
+    Object.keys(vendasMap).forEach(function(sku){
+      if(skuSet[sku]) return;
+      var v = vendasMap[sku];
+      if(v.qtdVendida <= 0) return;
+      var vendaMediaDia = safeDiv(v.qtdVendida,diasVenda);
+      var custo = custoMap[sku] || (v.qtdVendida ? round2(v.custoVendido/v.qtdVendida) : 0);
+      items.push({sku:sku, descricao:v.descricao||'', categoria:v.categoria||catMap[sku]||'', qtdEstoque:0, vendaMediaDia:vendaMediaDia, diasEstoque:0, faixa:'Ruptura', valorEstoque:0, custoUnit:custo, valorVendido90:v.valorVendido||0});
     });
     items = calcABC(items,'valorVendido90');
     items.forEach(function(it){it.abcFat=it.abc_valorVendido90||'C';});
-    // Sort: maior cobertura primeiro
     items.sort(function(a,b){ return (b.diasEstoque||0)-(a.diasEstoque||0); });
     var semGiro=items.filter(function(i){return i.faixa==='Sem giro'}).length;
     var ruptura=items.filter(function(i){return i.faixa==='Ruptura'}).length;
@@ -212,7 +242,6 @@ var Engine = (function(){
     var medioRisco=items.filter(function(i){return i.faixa==='Médio risco'}).length;
     var coberturaIdeal=items.filter(function(i){return i.faixa==='Cobertura ideal'}).length;
     var excessos=items.filter(function(i){return i.faixa==='Excesso de cobertura'}).length;
-    // Cobertura = soma qtdEstoque / soma vendaMediaDia (todos que TEM vendas, incluindo estoque=0)
     function calcCobertura(filteredItems){
       var sE=0, sV=0;
       filteredItems.forEach(function(i){

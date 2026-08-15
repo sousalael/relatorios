@@ -321,7 +321,7 @@ function processAll(){
       fill.style.width='65%';
       setTimeout(function(){
         if(itemsBase&&hasVendas){
-          State.results.dias=Engine.calcDiasEstoque(itemsBase,State.rawData.vendas,custoMap,State.info.diasVenda);
+          State.results.dias=Engine.calcDiasEstoque(itemsBase,State.rawData.vendas,custoMap,State.info.diasVenda,State.rawData.cadastro);
           avail.dias=true;
         }
         fill.style.width='75%';
