@@ -66,7 +66,29 @@ function autoMapHeadersForType(headers,fileType){
   return m;
 }
 function autoMapHeaders(headers){return autoMapHeadersForType(headers,'');}
-function readFile(file,cb){var r=new FileReader();r.onload=function(e){var d=new Uint8Array(e.target.result);var wb=XLSX.read(d,{type:'array',raw:true});var sh=wb.Sheets[wb.SheetNames[0]];var json=XLSX.utils.sheet_to_json(sh,{defval:''});cb({headers:json.length?Object.keys(json[0]):[],rows:json,filename:file.name,rowCount:json.length});};r.readAsArrayBuffer(file);}
+function parseCSVLine(line,sep){var r=[],cur='',inQ=false;for(var i=0;i<line.length;i++){var ch=line[i];if(inQ){if(ch==='"'&&line[i+1]==='"'){cur+='"';i++;}else if(ch==='"'){inQ=false;}else{cur+=ch;}}else{if(ch==='"'){inQ=true;}else if(ch===sep){r.push(cur.trim());cur='';}else{cur+=ch;}}}r.push(cur.trim());return r;}
+function readFile(file,cb){
+  var r=new FileReader();
+  var isText=/\.(csv|txt)$/i.test(file.name);
+  r.onload=function(e){
+    var d=new Uint8Array(e.target.result);
+    if(isText){
+      var text=new TextDecoder('utf-8').decode(d);
+      if(text.indexOf('\ufffd')>=0)text=new TextDecoder('latin1').decode(d);
+      var lines=text.split(/\r?\n/).filter(function(l){return l.trim();});
+      if(!lines.length){cb({headers:[],rows:[],filename:file.name,rowCount:0});return;}
+      var sep=lines[0].indexOf('\t')>=0?'\t':(lines[0].indexOf(';')>=0?';':',');
+      var headers=parseCSVLine(lines[0],sep);
+      var rows=[];
+      for(var i=1;i<lines.length;i++){var vals=parseCSVLine(lines[i],sep);var row={};for(var j=0;j<headers.length;j++){row[headers[j]]=vals[j]||'';}rows.push(row);}
+      cb({headers:headers,rows:rows,filename:file.name,rowCount:rows.length});
+    }else{
+      var wb=XLSX.read(d,{type:'array'});var sh=wb.Sheets[wb.SheetNames[0]];
+      var json=XLSX.utils.sheet_to_json(sh,{defval:''});
+      cb({headers:json.length?Object.keys(json[0]):[],rows:json,filename:file.name,rowCount:json.length});
+    }
+  };r.readAsArrayBuffer(file);
+}
 /* parseNumBR: número JS passa direto; string BR converte (ponto=milhar, vírgula=decimal) */
 var NUMERIC_FIELDS={qtdSistema:1,qtdContada:1,custoUnit:1,qtdVendida:1,valorVendido:1,custoVendido:1,lucro:1};
 function parseNumBR(val){
@@ -85,7 +107,7 @@ var BRL=function(v){return(v<0?'−':'')+'R$ '+Math.abs(v||0).toLocaleString('pt
 var BRLi=function(v){return(v<0?'−':'')+'R$ '+Math.abs(Math.round(v||0)).toLocaleString('pt-BR');};
 var PCT=function(v){return(v||0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';};
 var NUM=function(v){return(v||0).toLocaleString('pt-BR');};
-var NUMBR=function(v){if(v===null||v===undefined)return'—';return Number(v).toLocaleString('pt-BR',{maximumFractionDigits:2});};
+var NUMBR=function(v){if(v===null||v===undefined)return'—';return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});};
 function $(id){return document.getElementById(id);}
 
 /* ===== TABS ===== */
